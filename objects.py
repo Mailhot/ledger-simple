@@ -1,10 +1,12 @@
 
 from mongoengine import *
 from datetime import datetime
-
+from bson import ObjectId
 
 default_currency = "CAD"
 
+# Connect the DB, just need to install mongoDB, might need to create the DB?
+connect('ledger-simple')
 
 
 class Account(Document):
