@@ -25,8 +25,19 @@ class Transaction(Document):
 	currency_rate = FloatField(default=1)
 	date = DateTimeField(default=datetime.now())
 
+
 def add_transaction(account_to, account_from, amount, currency=default_currency, date=datetime.now()):
 	# keep on
+	new_transaction = Transaction(account_to=account_to, 
+								account_from=account_from,
+								amount=amount,
+								currency=currency,
+								date=date)
+	new_transaction.save()
+
+	print("New transaction saved : ", transaction.id)
+
+	return new_transaction
 
 def get_exchange_rate():
 	# Keep on
