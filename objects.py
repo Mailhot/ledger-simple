@@ -21,6 +21,7 @@ ACCOUNT_TYPE = {'BC': 'Bank and Cash',
             'OI': 'Other Income',
             'DC': 'Direct Cost',
             'CYE': 'Current Year Earning',
+            'SUM': 'Sum',
             }
 
 def init_counters():
@@ -53,8 +54,23 @@ def getNextSequenceValue(sequenceName):
 
 
 class User(Document):
-    id_ = IntField(required=True)
-    name = StringField()
+    id_ = IntField(unique=True, required=True)
+    name = StringField(unique=True)
+
+    def init_2_users():
+        user1_name = input("What is the name of the user 1 >> ")
+        user2_name = input("What is the name of the user 2 >> ")
+        user1 = User.add_user(user1_name)
+        user2 = User.add_user(user2_name)
+
+    def add_user(name):
+        new_user = User(id_=getNextSequenceValue('UserId'), name=name)
+        new_user.save()
+        return new_user
+
+    def get_user(name):
+        user1 = User.objects.get(name=name)
+        return user1
 
 class Account(Document):
     """This is the Chart of Account accounts items"""
@@ -64,6 +80,63 @@ class Account(Document):
     description = StringField(max_length=200, required=True)
     type_ = StringField(max_length=3, choices=ACCOUNT_TYPE)
     user_ratio = MapField(ReferenceField(User), default=None) # Needs testing, should be a dict
+    account_number = IntField(default=None)
+    account_type = StringField(max_length=3)
+
+    def add_account(number, parent_account, child_account, description, type_, user_ratio, account_number=None, account_type=None):
+        new_account = Account(number=number, 
+                            parent_account=parent_account,
+                            child_account=child_account,
+                            description=description,
+                            type_=type_,
+                            user_ratio=user_ratio,
+                            account_number=account_number, 
+                            account_type=account_type,
+                            )
+        new_account.save()
+        print(new_account.id)
+
+    def import_accounts_from_file(filename):
+        with open(filename, "r") as the_file:
+            csv_reader = csv.reader(the_file, delimiter=',')
+            line_count = 0
+            last_sum = None
+            for row in csv_reader:
+
+                if row[4] == 'Sum':
+                    parent_account = None
+                else:
+                    parent_account = last_sum
+
+
+                # Get ratios
+                if row[5] != None:
+                    user_ratio = {User.objects[0].id_: float(row[5])/100, User.objects[1].id_: float(row[6]/100)}
+                else:
+                    user_ratio = None
+
+                # Account type and number for bank account
+                if row[2] != None:
+                    account_number = int(row[2])
+                    account_type = row[3]
+                else:
+                    account_type = None
+                    account_number = None
+
+                new_account = Account.add_account(number=row[0],
+                                                parent_account=parent_account,
+                                                child_account=None, 
+                                                description=row[1],
+                                                type_=ACCOUNT_TYPE.keys()[ACCOUNT_TYPE.values().index(row[4])],
+                                                user_ratio=user_ratio,
+                                                account_number=account_number, 
+                                                account_type=account_type,
+                                                )
+                
+
+                if row[4] == 'Sum':
+                    last_sum = new_account
+
 
 class Statement(Document):
     id_ = IntField(required=True)
@@ -92,7 +165,6 @@ class Statement(Document):
     def import_statement_from_file(filename, delimiter):
         """import a file into a statement and statement lines, 
         requires the filename and delimiter."""
-
         
         created_statement = False
 
@@ -110,10 +182,8 @@ class Statement(Document):
             current_statement = Statement.init_statement(filename)
             created_statement = True
 
-
         current_statement_list = list()
         current_statement_list.append(current_statement)
-
 
         with open(filename) as the_file:
             csv_reader = csv.reader(the_file, delimiter=delimiter)
@@ -177,6 +247,7 @@ class Statement(Document):
             print(line)
 
 
+
 class StatementLine(Document): #
     id_ = IntField(required=True)
     date = DateTimeField(default=datetime.now())
@@ -191,6 +262,7 @@ class StatementLine(Document): #
     reimbursement = FloatField(default=0)
     balance = FloatField(default=0)
     statement = ReferenceField(Statement)
+    #journal_entry = ReferenceField(JournalEntry, default=None)
 
     def __str__(self):
         return "%s %s %s %s %s %s %s %s %s %s %s %s" %(self.id_, self.date, self.account_number, self.account_type, self.line_number, self.description,
@@ -227,8 +299,6 @@ class StatementLine(Document): #
         return new_statement_line
 
 
-
-
 class Transaction(Document):
     """docstring for ClassName"""
     id_ = IntField(required=True)
@@ -239,7 +309,7 @@ class Transaction(Document):
     # user_ratio = MapField(ReferenceField(User), default=None) # this should be used only in accounts i think
     source_ref = ReferenceField(StatementLine)
     source = StringField(default=None) # could be text or ref to other document ID (ex: Statment0001)
-
+    user_amount = MapField(ReferenceField(User), default=None)
     # We do not manage currency for now.
     #currency_amount = currency_rate = FloatField(default=0)
     #currency = StringField(max_length=3, default="CAD")
@@ -260,9 +330,14 @@ class Transaction(Document):
 
         return new_transaction
 
+
+
+
 class JournalEntry(Document):
     id_ = IntField(required=True)
     transactions = ListField(ReferenceField(Transaction))
+
+
 
 def get_exchange_rate():
     # Keep on
