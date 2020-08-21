@@ -95,6 +95,11 @@ class Account(Document):
                             )
         new_account.save()
         print(new_account.id)
+        return new_account
+
+    def get_account(number):
+        account1 = Account.objects.get(number=number)
+        return account1
 
     def import_accounts_from_file(filename):
         with open(filename, "r") as the_file:
@@ -102,40 +107,51 @@ class Account(Document):
             line_count = 0
             last_sum = None
             for row in csv_reader:
+                if line_count == 0:
+                    print('skipping first line')
+                    line_count += 1
+                    continue
 
-                if row[4] == 'Sum':
-                    parent_account = None
                 else:
-                    parent_account = last_sum
+                    if row[4] == 'Sum':
+                        parent_account = None
+                    else:
+                        parent_account = last_sum
 
 
-                # Get ratios
-                if row[5] != None:
-                    user_ratio = {User.objects[0].id_: float(row[5])/100, User.objects[1].id_: float(row[6]/100)}
-                else:
-                    user_ratio = None
+                    # Get ratios
+                    if row[5] != '':
+                        user_ratio = {str(User.objects[0].id_): float(row[5])/100, str(User.objects[1].id_): float(row[6])/100}
+                    else:
+                        user_ratio = None
 
-                # Account type and number for bank account
-                if row[2] != None:
-                    account_number = int(row[2])
-                    account_type = row[3]
-                else:
-                    account_type = None
-                    account_number = None
+                    # Account type and number for bank account
+                    if row[2] != '':
+                        account_number = int(row[2])
+                        account_type = row[3]
+                    else:
+                        account_type = None
+                        account_number = None
 
-                new_account = Account.add_account(number=row[0],
-                                                parent_account=parent_account,
-                                                child_account=None, 
-                                                description=row[1],
-                                                type_=ACCOUNT_TYPE.keys()[ACCOUNT_TYPE.values().index(row[4])],
-                                                user_ratio=user_ratio,
-                                                account_number=account_number, 
-                                                account_type=account_type,
-                                                )
-                
+                    dict_values = list(ACCOUNT_TYPE.values()).index(row[4])
+                    print("dict_values = ", dict_values)
+                    dict_keys = list(ACCOUNT_TYPE.keys())
+                    new_account = Account.add_account(number=row[0],
+                                                    parent_account=parent_account,
+                                                    child_account=None, 
+                                                    description=row[1],
+                                                    type_=dict_keys[dict_values],
+                                                    user_ratio=user_ratio,
+                                                    account_number=account_number, 
+                                                    account_type=account_type,
+                                                    )
+                    new_account.save()
+                    
 
-                if row[4] == 'Sum':
-                    last_sum = new_account
+                    if row[4] == 'Sum':
+                        last_sum = new_account
+
+                line_count += 1
 
 
 class Statement(Document):
@@ -268,6 +284,10 @@ class StatementLine(Document): #
         return "%s %s %s %s %s %s %s %s %s %s %s %s" %(self.id_, self.date, self.account_number, self.account_type, self.line_number, self.description,
                                                         self.credit, self.debit, self.interest, self.advance, self.reimbursement, self.balance)
 
+    def get_statement_line(id_):
+        result = StatementLine.objects.get(id_=id_)
+        return result
+
     def to_float_or_zero(value):
         # convert a value to a float, if not possible, return zero.
         try:
@@ -316,14 +336,35 @@ class Transaction(Document):
     #currency_rate = FloatField(default=1)
 
     def add_transaction(date, account_number, credit, debit, source, source_ref):
+
+        account_class = Account.get_account(account_number)
+
         # keep on
+        if credit == '':
+            credit = 0
+
+        else:
+            credit = float(credit)
+
+        if debit == '':
+            debit == 0
+
+        else:
+            debit = float(debit)
+
+        user_amount = dict()
+        for user in account_class.user_ratio.keys():
+            user_amount[user] = account_class.user_ratio[user] * (credit + debit)
+
         new_transaction = Transaction(id_=getNextSequenceValue('TransactionId'), 
                                     date=date,
                                     account_number=account_number,
                                     credit=credit,
                                     debit=debit,
                                     source=source,
-                                    source_ref=source_ref)
+                                    source_ref=source_ref,
+                                    user_amount = user_amount,
+                                    )
         new_transaction.save()
 
         print("New transaction saved : ", new_transaction.id)
@@ -335,7 +376,39 @@ class Transaction(Document):
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
+    statement_line = ReferenceField(StatementLine)
     transactions = ListField(ReferenceField(Transaction))
+
+    def create_from_statement_line(statement_line_id_):
+        # Confirm it does not already exist.
+        statement_line = Statement.get_statement_line(statement_line_id_)
+        existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
+
+        if existing_journal_entry:
+            print('line already existing')
+
+        else:
+
+            # add first Transaction from the source account in statement line.
+            transaction1 = Transaction()
+
+            # add second Transaction from the found destination account in past statement line.
+            past_statement_line = list(StatementLine.objects(description=statement_line.description, id__ne=statement_line.id))
+
+
+            if len(past_statement_line) > 0:
+                # TODO: Would need to find the most recent past_statement_line to be able to have proper account if modification were made.
+                past_statement_line[0].
+                transaction2 = Transaction.add_transaction(date=statement_line.date,
+                                                            account_number=past_statement_line.date,
+                                                            credit=,
+                                                            debit, source, source_ref)
+
+
+
+            new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
+                                            statement_line=statement_line,
+                                            )
 
 
 
