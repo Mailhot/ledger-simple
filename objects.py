@@ -352,7 +352,11 @@ class Transaction(Document):
         print("%4s %10s %15s %8s %8s %5s %6s %20s" %('id_', 'date', 'account_number', 'credit', 'debit', 'source_ref.id_',
                                                         'source', 'user_amount',))
     def __str__(self):
-        return "%4s %10s %15s %8s %8s %5s %6s %20s" %(self.id_, self.date.date(), self.account_number.number, self.credit, self.debit, self.source_ref.id_,
+        if self.source_ref:
+            source_ref_id = source_ref.id_
+        else:
+            source_ref_id = None
+        return "%4s %10s %15s %8s %8s %5s %6s %20s" %(self.id_, self.date.date(), self.account_number.number, self.credit, self.debit, source_ref_id,
                                                         self.source, self.user_amount)
 
     def add_transaction(date, account_number, credit, debit, source, source_ref):
@@ -404,6 +408,7 @@ class JournalEntry(Document):
     transactions = ListField(ReferenceField(Transaction))
 
     def create_from_statement_line(statement_line_id_):
+        print('')
         # Confirm it does not already exist.
         statement_line = StatementLine.get_statement_line(statement_line_id_)
         StatementLine.header()
@@ -435,7 +440,7 @@ class JournalEntry(Document):
                 pass
 
             else:
-                selected_transaction = open_transaction[transaction_choice-1]
+                selected_transaction = open_transaction[int(transaction_choice)-1]
                 selected_transaction.source_ref = statement_line
                 selected_transaction.save()
                 # TODO: need to add a parameter to show the line has been reconciled.
@@ -519,7 +524,7 @@ class JournalEntry(Document):
                                     credit=statement_line.debit,
                                     debit=statement_line.credit, 
                                     source=None, 
-                                    source_ref=statement_line,
+                                    source_ref=None,
                                     )
 
                         transaction2.save()
@@ -550,20 +555,22 @@ class JournalEntry(Document):
             #################################
             # Check ratios and balance them
             # TODO: this would need a function to itself.
-            if transaction2.user_amount == None: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
+            print('transaction2.user_amount = ', transaction2.user_amount)
+            if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
                 print('Output account has no ratio set, use parent ratio?')
-                print('Parent ratio: ', transactio1.account_number.user_ratio)
+                print('Parent ratio: ', transaction1.account_number.user_ratio)
                 use_parent_ratio_choice = input('(y)/n >> ')
                 if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
                     transaction2.user_amount = transaction1.user_amount
                     transaction2.save()
-                    print('Transaction updated')
+                    print('parent ratio used')
+
                 else:
                     ratio_choice = input('What ratio should we set to user1? >> ')
                     users = list(User.objects())
 
-                    transaction2.user_amount = {users[0].id_: float(ratio_choice) * (transaction2.credit + transaction2.debit), 
-                                                users[1].id_: 1-float(ratio_choice) * (transaction2.credit + transaction2.debit)}
+                    transaction2.user_amount = {str(users[0].id_): float(ratio_choice) * (transaction2.credit + transaction2.debit), 
+                                                str(users[1].id_): 1-float(ratio_choice) * (transaction2.credit + transaction2.debit)}
                     transaction2.save()
 
             elif transaction1.account_number.user_ratio != transaction2.account_number.user_ratio:
