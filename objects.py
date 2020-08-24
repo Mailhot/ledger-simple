@@ -390,26 +390,68 @@ class JournalEntry(Document):
         else:
 
             # add first Transaction from the source account in statement line.
-            transaction1 = Transaction()
+            transaction1 = Transaction.add_transaction(date=statement_line.date,
+                                                            account_number=statement_line.account_number,
+                                                            credit=statement_line.credit,
+                                                            debit=statement_line.debit, 
+                                                            source=None, 
+                                                            source_ref=statement_line,
+                                                            )
+            transaction1.save()
 
             # add second Transaction from the found destination account in past statement line.
-            past_statement_line = list(StatementLine.objects(description=statement_line.description, id__ne=statement_line.id))
+            past_statement_line = list(StatementLine.objects(description=statement_line.description, 
+                                                            id__ne=statement_line.id
+                                                            ))
 
 
             if len(past_statement_line) > 0:
                 # TODO: Would need to find the most recent past_statement_line to be able to have proper account if modification were made.
-                past_statement_line[0].
+                # Until we get the most recent, we use the last one.
+                selected_past_statement_line = past_statement_line[-1] 
+
+
                 transaction2 = Transaction.add_transaction(date=statement_line.date,
-                                                            account_number=past_statement_line.date,
-                                                            credit=,
-                                                            debit, source, source_ref)
+                                                            account_number=selected_past_statement_line.date,
+                                                            credit=statement_line.debit,
+                                                            debit=statement_line.credit, 
+                                                            source=None, 
+                                                            source_ref=statement_line,
+                                                            )
+                transaction2.save()
+
+            else:
+                account_number_choice = input('what account should this statement go to? >> ')
+                
+                while True:
+                    try:
+                        result_account = Account.objects.get(account_number=int(account_number_choice))
+                        break
+                    except:
+                        print('account not found, please try again.')
+                        for account_ in Account.objects():
+                            print(account_number, '-', account_type, description)
+
+                transaction2 = Trasaction.add_transaction(date=statement_line.date,
+                                                            account_number=result_account,
+                                                            credit=statement_line.debit,
+                                                            debit=statement_line.credit, 
+                                                            source=None, 
+                                                            source_ref=statement_line,
+                                                            )
+                transaction2.save()
+
 
 
 
             new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
                                             statement_line=statement_line,
                                             )
+            new_journal_entry.save()
 
+            new_journal_entry.transactions.append(transaction1)
+            new_journal_entry.transactions.append(transaction2)
+            new_journal_entry.save()
 
 
 def get_exchange_rate():
