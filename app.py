@@ -1,4 +1,5 @@
 import objects
+import datetime
 
 
 def import_chart_of_account(filename='./.data/ChartofAccounts.csv'):
@@ -25,7 +26,8 @@ if __name__ == "__main__":
     user2 = objects.User.objects[1]
     #import_chart_of_account()
     #objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',')
-    process_statement(17)
+    #process_statement(17)
+    objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     
 

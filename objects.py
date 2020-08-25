@@ -354,7 +354,7 @@ class Transaction(Document):
                                                         'source', 'user_amount',))
     def __str__(self):
         if self.source_ref:
-            source_ref_id = source_ref.id_
+            source_ref_id = self.source_ref.id_
         else:
             source_ref_id = None
         return "%4s %10s %15s %8s %8s %5s %6s %20s" %(self.id_, self.date.date(), self.account_number.number, self.credit, self.debit, source_ref_id,
@@ -401,7 +401,7 @@ class Transaction(Document):
         return new_transaction
 
 
-class report():
+class reports():
     """Basid class for standard GAAP reports:
 
     income statement
@@ -447,37 +447,73 @@ class report():
         report_classify['CYE'] = 'current_year_earning' # 'Current Year Earning',
         
         report_section = collections.OrderedDict()
+        report_section['assets'] = {}
         report_section['assets']['total'] = 0
+        report_section['liability'] = {}
         report_section['liability']['total'] = 0
+        report_section['expense'] = {}
         report_section['expense']['total'] = 0
+        report_section['revenue'] = {}
         report_section['revenue']['total'] = 0
+        report_section['direct_cost'] = {}
         report_section['direct_cost']['total'] = 0
+
 
         for user in list(User.objects()):
             for section in report_section.keys():
                 report_section[section][str(user.id_)] = 0
 
-        for journal_entry in list(JournalEntry.objects(date__gt=date_from, date__lt=date_to)):
+        journal_entry_filtered = list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
+        #print(journal_entry_filtered)
+        for journal_entry in journal_entry_filtered:
+            print('journal_entry = ', journal_entry)
             for transaction in journal_entry.transactions:
-                report_section[report_classify[transaction.account_number.type_]]['total'] += (transaction.credit + transaction.debit)
-                for user in list(User.objects()):
-                    report_section[report_classify[transaction.account_number.type_]][str(user.id_)] += transaction.user_amount[str(user.id_)]
+                # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
+                if transaction.credit == 0:
+                    debit = True
+                    report_section[report_classify[transaction.account_number.type_]]['total'] += transaction.debit
+                else:
+                    debit = False
 
-        line_value = []
-        print('%12s   %12s  %12s  %12s' %('section', 'total', 'user1', 'user2'))
+                    report_section[report_classify[transaction.account_number.type_]]['total'] -= transaction.credit
+                
+                print(transaction)
+                for user in list(User.objects()):
+                    if debit == True:
+
+                        report_section[report_classify[transaction.account_number.type_]][str(user.id_)] += transaction.user_amount[str(user.id_)]
+                    else:
+                        report_section[report_classify[transaction.account_number.type_]][str(user.id_)] -= transaction.user_amount[str(user.id_)]
+        
+        print(report_section)
+
+        print('%12s   %10s  %10s  %10s' %('section', 'total', 'user1', 'user2'))
         for report_section_key in report_section.keys():
-            for report_line_key in report_section_key.keys():
+            #print(report_section_key)
+            line_value = []
+            for report_line_key in report_section[report_section_key].keys():
                 # TODO: confirm this occurs in proper order
                 line_value.append(report_section[report_section_key][report_line_key])
-            print('%12s   %12s  %12s  %12s' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+            print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
 
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
+    date = DateTimeField(default=None)
     statement_line = ReferenceField(StatementLine)
     transactions = ListField(ReferenceField(Transaction))
 
+    def header():
+        print("%6s %10s %15s %12s" %('id_', 'date', 'statement_line', 'transactions',))
+
+    def __str__(self):
+        output_transaction_id = []
+        if self.transactions:
+            for transaction in self.transactions:
+                output_transaction_id.append(transaction.id_)
+
+        return "%6s %10s %15s %12s" %(self.id_, self.date.date(), self.statement_line.id_, output_transaction_id,)
 
 
     def create_from_statement_line(statement_line_id_):
@@ -592,6 +628,7 @@ class JournalEntry(Document):
                         result_account = None
 
                     if result_account != None:
+
                         transaction2 = Transaction.add_transaction(date=statement_line.date,
                                     account_number=result_account,
                                     credit=statement_line.debit,
@@ -618,6 +655,7 @@ class JournalEntry(Document):
 
 
             new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
+                                            date=statement_line.date,
                                             statement_line=statement_line,
                                             )
             new_journal_entry.save()
