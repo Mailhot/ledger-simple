@@ -3,6 +3,7 @@ from mongoengine import *
 from datetime import datetime
 from bson import ObjectId
 import csv
+import collections
 
 default_currency = "CAD"
 
@@ -400,12 +401,84 @@ class Transaction(Document):
         return new_transaction
 
 
+class report():
+    """Basid class for standard GAAP reports:
+
+    income statement
+    balance sheet
+    cash flow
+
+    """
+    # ACCOUNT_TYPE = {'BC': 'Bank and Cash',
+    #         'FA': 'Fixed Assets',
+    #         'NCL': 'Non-Current Liability',
+    #         'E': 'Expense',
+    #         'CA': 'Current Assets',
+    #         'R': 'Receivable',
+    #         'CL': 'Current Liability',
+    #         'P': 'Payable',
+    #         'I': 'Income',
+    #         'OI': 'Other Income',
+    #         'DC': 'Direct Cost',
+    #         'CYE': 'Current Year Earning',
+    #         'SUM': 'Sum',
+    #         }
+    # Income Statement
+    # Revenue
+    # Cost of Sale (direct cost) this is the essential cost
+    # Gross profit (revenue - direct cost)  
+    # Operating Expense
+    # Net Profit
+
+
+    def income_statement(date_from, date_to):
+        report_classify = dict()
+        report_classify['BC'] = 'assets' # 'Bank and Cash',
+        report_classify['FA'] = 'assets' # 'Fixed Assets',
+        report_classify['NCL'] = 'liability' # 'Non-Current Liability',
+        report_classify['E'] =  'expense' # 'Expense',
+        report_classify['CA'] = 'assets' # 'Current Assets',
+        report_classify['R'] = 'assets' # 'Receivable',
+        report_classify['CL'] = 'liability' # 'Current Liability',
+        report_classify['P'] = 'liability' # 'Payable',
+        report_classify['I'] = 'revenue' # 'Income',
+        report_classify['OI'] = 'revenue' # 'Other Income',
+        report_classify['DC'] = 'direct_cost' # 'Direct Cost',
+        report_classify['CYE'] = 'current_year_earning' # 'Current Year Earning',
+        
+        report_section = collections.OrderedDict()
+        report_section['assets']['total'] = 0
+        report_section['liability']['total'] = 0
+        report_section['expense']['total'] = 0
+        report_section['revenue']['total'] = 0
+        report_section['direct_cost']['total'] = 0
+
+        for user in list(User.objects()):
+            for section in report_section.keys():
+                report_section[section][str(user.id_)] = 0
+
+        for journal_entry in list(JournalEntry.objects(date__gt=date_from, date__lt=date_to)):
+            for transaction in journal_entry.transactions:
+                report_section[report_classify[transaction.account_number.type_]]['total'] += (transaction.credit + transaction.debit)
+                for user in list(User.objects()):
+                    report_section[report_classify[transaction.account_number.type_]][str(user.id_)] += transaction.user_amount[str(user.id_)]
+
+        line_value = []
+        print('%12s   %12s  %12s  %12s' %('section', 'total', 'user1', 'user2'))
+        for report_section_key in report_section.keys():
+            for report_line_key in report_section_key.keys():
+                # TODO: confirm this occurs in proper order
+                line_value.append(report_section[report_section_key][report_line_key])
+            print('%12s   %12s  %12s  %12s' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+
 
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
     statement_line = ReferenceField(StatementLine)
     transactions = ListField(ReferenceField(Transaction))
+
+
 
     def create_from_statement_line(statement_line_id_):
         print('')
