@@ -496,6 +496,12 @@ class reports():
                 line_value.append(report_section[report_section_key][report_line_key])
             print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
+    def general_ledger(date_from, date_to):
+        report_section = collections.OrderedDict()
+        for account_ in list(Account.objects()):
+
+            report_section[account_.account_number] = {}
+            report_section[account_.account_number][]
 
 
 class JournalEntry(Document):
@@ -681,7 +687,7 @@ class JournalEntry(Document):
                     users = list(User.objects())
 
                     transaction2.user_amount = {str(users[0].id_): float(ratio_choice) * (transaction2.credit + transaction2.debit), 
-                                                str(users[1].id_): 1-float(ratio_choice) * (transaction2.credit + transaction2.debit)}
+                                                str(users[1].id_): (1-float(ratio_choice)) * (transaction2.credit + transaction2.debit)}
                     transaction2.save()
 
             elif transaction1.account_number.user_ratio != transaction2.account_number.user_ratio:
