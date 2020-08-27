@@ -4,6 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 import csv
 import collections
+import helpers
 
 default_currency = "CAD"
 
@@ -191,9 +192,11 @@ class Statement(Document):
 
 
 
-    def import_statement_from_file(filename, delimiter):
+    def import_statement_from_file(filename, delimiter, header=False):
         """import a file into a statement and statement lines, 
-        requires the filename and delimiter."""
+        requires the filename and delimiter.
+        header = True mean skip the first line.
+        """
         
         created_statement = False
 
@@ -218,9 +221,19 @@ class Statement(Document):
             csv_reader = csv.reader(the_file, delimiter=delimiter)
             line_counter = 0
             first_line = True
+            header_passed = False
             for line in csv_reader:
+                if header == True and header_passed == False: # skip first line if header = true
+                    header_passed = True
+                    continue
+
                 if len(line) > 1: # find the first line that is now empty.
                     if created_statement == True:
+                        if line[6] != '':
+                            destination_account = int(line[6])
+                        else:
+                            destination_account = None
+
                         new_line = StatementLine.create_line(date=line[3],
                                                             account_number=line[1],
                                                             account_type=line[2],
@@ -233,6 +246,7 @@ class Statement(Document):
                                                             reimbursement=StatementLine.to_float_or_zero(line[12]),
                                                             balance=StatementLine.to_float_or_zero(line[13]),
                                                             statement=current_statement,
+                                                            destination_account=destination_account,
                                                             )
 
                         # add newly imported line to statement.
@@ -291,6 +305,7 @@ class StatementLine(Document): #
     reimbursement = FloatField(default=0)
     balance = FloatField(default=0)
     statement = ReferenceField(Statement)
+    destination_account = IntField(default=None)
     #journal_entry = ReferenceField(JournalEntry, default=None)
     def header():
         print("%4s %10s %8s %3s %4s %30s %6s %6s %6s %6s %6s %6s" %('id_', 'date', 'account_number', 'account_type', 'line_number', 'description',
@@ -314,7 +329,7 @@ class StatementLine(Document): #
 
 
 
-    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement):
+    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=None):
         
         new_statement_line = StatementLine(id_=getNextSequenceValue('StatementLineId'),
                                         date=date,
@@ -329,6 +344,7 @@ class StatementLine(Document): #
                                         reimbursement=reimbursement,
                                         balance=balance,
                                         statement=statement,
+                                        destination_account=destination_account,
                                         )
         new_statement_line.save()
         return new_statement_line
@@ -357,8 +373,12 @@ class Transaction(Document):
             source_ref_id = self.source_ref.id_
         else:
             source_ref_id = None
+        if self.user_amount:
+            user_amount = self.user_amount
+        else:
+            user_amount = 'n/a'
         return "%4s %10s %15s %8s %8s %5s %6s %20s" %(self.id_, self.date.date(), self.account_number.number, self.credit, self.debit, source_ref_id,
-                                                        self.source, self.user_amount)
+                                                        self.source, user_amount)
 
     def add_transaction(date, account_number, credit, debit, source, source_ref):
 
@@ -380,7 +400,7 @@ class Transaction(Document):
         if account_number.user_ratio != None:
             user_amount = dict()
             for user in account_number.user_ratio.keys():
-                print('user_ratio', account_number.user_ratio[user])
+                #print('user_ratio', account_number.user_ratio[user])
                 user_amount[user] = float(account_number.user_ratio[user]) * (credit + debit)
         else: # User ratio is None
             user_amount = None
@@ -396,7 +416,7 @@ class Transaction(Document):
                                     )
         new_transaction.save()
 
-        print("New transaction saved : ", new_transaction.id)
+        print("New transaction saved : ", new_transaction)
 
         return new_transaction
 
@@ -409,20 +429,7 @@ class reports():
     cash flow
 
     """
-    # ACCOUNT_TYPE = {'BC': 'Bank and Cash',
-    #         'FA': 'Fixed Assets',
-    #         'NCL': 'Non-Current Liability',
-    #         'E': 'Expense',
-    #         'CA': 'Current Assets',
-    #         'R': 'Receivable',
-    #         'CL': 'Current Liability',
-    #         'P': 'Payable',
-    #         'I': 'Income',
-    #         'OI': 'Other Income',
-    #         'DC': 'Direct Cost',
-    #         'CYE': 'Current Year Earning',
-    #         'SUM': 'Sum',
-    #         }
+
     # Income Statement
     # Revenue
     # Cost of Sale (direct cost) this is the essential cost
@@ -500,9 +507,9 @@ class reports():
         # Create the report dict
         report_section = collections.OrderedDict()
         for account_ in list(Account.objects()):
-
-            report_section[account_.account_number] = {}
-            report_section[account_.account_number]['total'] = 0
+            #print(type(account_.number))
+            report_section[account_.number] = {}
+            report_section[account_.number]['total'] = 0
 
         for user in list(User.objects()):
             for section in report_section.keys():
@@ -525,13 +532,22 @@ class reports():
                 
                 print(transaction)
                 for user in list(User.objects()):
-                    if debit == True:
-                        report_section[transaction.account_number.number][str(user.id_)] += transaction.user_amount[str(user.id_)]
-                    
-                    else:
-                        report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
+                    if transaction.user_amount:
+                        if debit == True:
+                            report_section[transaction.account_number.number][str(user.id_)] += transaction.user_amount[str(user.id_)]
+                        
+                        else:
+                            report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
         
-        print(report_section)
+        #print(report_section)
+        print('%12s   %10s  %10s  %10s' %('section', 'total', 'user1', 'user2'))
+        for report_section_key in report_section.keys():
+            #print(report_section_key)
+            line_value = []
+            for report_line_key in report_section[report_section_key].keys():
+                # TODO: confirm this occurs in proper order
+                line_value.append(report_section[report_section_key][report_line_key])
+            print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
 
     def balance_sheet(date):
@@ -564,6 +580,8 @@ class JournalEntry(Document):
         StatementLine.header()
         print(statement_line)
 
+        statement_line_interest = 0
+
         # Step 1
         # Check if existing transaction are present, update source if yes.
         open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
@@ -591,26 +609,39 @@ class JournalEntry(Document):
 
             else:
                 selected_transaction = open_transaction[int(transaction_choice)-1]
-                selected_transaction.source_ref = statement_line
+                selected_transaction.source_ref = statement_line # TODO: this should be integrated with the new reference many to many below.
+                # link1 = StatementLineToJournalEntry(statement_line=statement_line, journal_entry=)
+                # link1 = JournalEntryToTransaction(journal_entry=journal_entry, transaction=transaction)
+                # link1.save()
                 selected_transaction.save()
                 # TODO: need to add a parameter to show the line has been reconciled.
+
+                new_journal_entry = JournalEntry.objects.get(transactions__in=[selected_transaction])
+
+
 
 
         else: # No transaction matches this statement line, so we create a new one.
 
             try:
-                existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
+                #existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
+                existing_journal_entry = StatementLineToJournalEntry.objects.get(statement_line=statement_line)
+
                 print('line found')
 
             except:
                 print('No JournalEntry exist on this line, creating new one.')
 
-            
+            # consolidate advance / reimbursement in credit / debit transaction.
+            statement_line_credit, statement_line_debit, statement_line_interest = helpers.statement_line_group_money_transfer(statement_line)
+
+
+        
             # add first Transaction from the source account in statement line.
             transaction1 = Transaction.add_transaction(date=statement_line.date,
                                                         account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
-                                                        credit=statement_line.credit,
-                                                        debit=statement_line.debit, 
+                                                        credit=statement_line_credit,
+                                                        debit=statement_line_debit, 
                                                         source=None, 
                                                         source_ref=statement_line,
                                                         )
@@ -618,7 +649,9 @@ class JournalEntry(Document):
 
             # add second Transaction from the found destination account in past journal entry.
             # But first check if past statement line were threated, if yes we will use the same account output.
-            past_statement_line = list(StatementLine.objects(description=statement_line.description,
+            past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
+                                                            account_type=statement_line.account_type,
+                                                            description=statement_line.description,
                                                             id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
                                                             ))
 
@@ -643,56 +676,32 @@ class JournalEntry(Document):
                 #     pass
                 #     # TODO: revert to next else statement (manual account choice.)
 
-                
-
                 transaction2 = Transaction.add_transaction(date=statement_line.date,
                                                             account_number=past_output_transaction.account_number,
-                                                            credit=statement_line.debit,
-                                                            debit=statement_line.credit, 
+                                                            credit=statement_line_debit,
+                                                            debit=statement_line_credit, 
                                                             source=None, 
                                                             source_ref=None, # will be either none or the other statement line that confirm this transaction if the account is bank and cash (has a statement)
                                                             )
-
                 transaction2.save()
 
             else:
-                exit_bol = False
+                if statement_line.destination_account != None:
+                    result_account = Account.objects.get(number=statement_line.destination_account)
+                else:
+                    result_account = helpers.choose_account()
 
-                while True:
-                    account_number_choice = input('what account should this statement go to? >> ')
+                transaction2 = Transaction.add_transaction(date=statement_line.date,
+                        account_number=result_account,
+                        credit=statement_line_debit,
+                        debit=statement_line_credit, 
+                        source=None, 
+                        source_ref=None,
+                        )
 
-                    try:
-                        result_account = Account.objects.get(number=int(account_number_choice))
-                        print('result found: ', result_account)
-                    except Exception as e: 
-                        print(e)
-                        result_account = None
+                transaction2.save()
 
-                    if result_account != None:
-
-                        transaction2 = Transaction.add_transaction(date=statement_line.date,
-                                    account_number=result_account,
-                                    credit=statement_line.debit,
-                                    debit=statement_line.credit, 
-                                    source=None, 
-                                    source_ref=None,
-                                    )
-
-                        transaction2.save()
-                        exit_bol = True
-
-
-                    else:
-                        print('account not found, please try again.')
-                        for account_ in Account.objects():
-                            print(account_.number, account_.description, account_.account_number, '-', account_.account_type)
-
-
-                        
-                    if exit_bol == True:
-                        break
-
-
+            
 
 
             new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
@@ -704,8 +713,10 @@ class JournalEntry(Document):
             new_journal_entry.transactions.append(transaction1)
             new_journal_entry.transactions.append(transaction2)
             new_journal_entry.save()
+
+            
             #################################
-            # Check ratios and balance them
+            # Check ratios
             # TODO: this would need a function to itself.
             print('transaction2.user_amount = ', transaction2.user_amount)
             if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
@@ -724,12 +735,52 @@ class JournalEntry(Document):
                     transaction2.user_amount = {str(users[0].id_): float(ratio_choice) * (transaction2.credit + transaction2.debit), 
                                                 str(users[1].id_): (1-float(ratio_choice)) * (transaction2.credit + transaction2.debit)}
                     transaction2.save()
+            # we need to keep the difference between accounts to see the transfer difference somehow.
+            # elif transaction1.account_number.user_ratio != transaction2.account_number.user_ratio:
+            #     transaction2.user_amount = transaction1.user_amount # take user amount from to affect to account.
+            #     transaction2.save()
 
-            elif transaction1.account_number.user_ratio != transaction2.account_number.user_ratio:
-                transaction2.user_amount = transaction1.user_amount # take user amount from to affect to account.
-                transaction2.save()
+        # Now that the 2 transaction have been saved, manage the interest
+        if statement_line_interest != 0 or statement_line.interest != 0:
+
+            # add 2 transaction to the journal entry to add interest expense to the entry.
+            # the interest expense were previously entered as credit to the account.
+            transaction3 = Transaction.add_transaction(date=statement_line.date,
+                        account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                        credit=0,
+                        debit=statement_line.interest, 
+                        source=None, 
+                        source_ref=statement_line,
+                        )
+
+            transaction3.save()
+
+            transaction4 = Transaction.add_transaction(date=statement_line.date,
+                        account_number=Account.objects.get(number=513010),
+                        credit=statement_line.interest,
+                        debit=0, 
+                        source=None, 
+                        source_ref=statement_line,
+                        )
+
+            transaction4.save()
+            new_journal_entry.transactions.append(transaction3)
+            new_journal_entry.transactions.append(transaction4)
+            transaction4.user_amount = transaction3.user_amount # take the parent ratio as the interest expense ratio.
+            transaction4.save()
+            new_journal_entry.save()
 
 
+# class StatementLineToTransaction(Document): # useless, this is already part of Transaction (source_ref), no need for a many to many
+#     """ clas to handle links between statement_line and journal entry"""
+
+#     statement_line = ReferenceField(StatementLine)
+#     journal_entry = ReferenceField(JournalEntry)
+
+class JournalEntryToTransaction(Document):
+
+    journal_entry = ReferenceField(JournalEntry)
+    transaction = ReferenceField(Transaction)
 
 def get_exchange_rate():
     # Keep on
