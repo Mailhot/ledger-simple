@@ -497,12 +497,47 @@ class reports():
             print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
     def general_ledger(date_from, date_to):
+        # Create the report dict
         report_section = collections.OrderedDict()
         for account_ in list(Account.objects()):
 
             report_section[account_.account_number] = {}
-            report_section[account_.account_number][]
+            report_section[account_.account_number]['total'] = 0
 
+        for user in list(User.objects()):
+            for section in report_section.keys():
+                report_section[section][str(user.id_)] = 0
+        
+        journal_entry_filtered = list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
+
+
+        for journal_entry in journal_entry_filtered:
+            print('journal_entry = ', journal_entry)
+            for transaction in journal_entry.transactions:
+                # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
+                if transaction.credit == 0:
+                    debit = True
+                    report_section[transaction.account_number.number]['total'] += transaction.debit
+                else:
+                    debit = False
+                    report_section[transaction.account_number.number]['total'] -= transaction.credit
+
+                
+                print(transaction)
+                for user in list(User.objects()):
+                    if debit == True:
+                        report_section[transaction.account_number.number][str(user.id_)] += transaction.user_amount[str(user.id_)]
+                    
+                    else:
+                        report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
+        
+        print(report_section)
+
+
+    def balance_sheet(date):
+        # Assets = Liabilities + Shareholders Equity
+        # assets - liabilities = net worth
+        pass
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
