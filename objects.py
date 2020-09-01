@@ -547,7 +547,13 @@ class reports():
             for report_line_key in report_section[report_section_key].keys():
                 # TODO: confirm this occurs in proper order
                 line_value.append(report_section[report_section_key][report_line_key])
-            print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+            line_value_sum = 0
+            for value_ in line_value:
+                line_value_sum += value_
+            if line_value_sum == 0:
+                continue
+            else:
+                print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
 
     def balance_sheet(date):
