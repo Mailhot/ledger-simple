@@ -77,4 +77,4 @@ def statement_line_group_money_transfer(statement_line):
         debit = 0
         interest = statement_line.interest
 
-    return debit, credit, interest
+    return credit, debit, interest

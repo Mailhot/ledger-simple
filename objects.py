@@ -113,6 +113,10 @@ class Account(Document):
         account1 = Account.objects.get(account_number=account_number, account_type=account_type)
         return account1
 
+    def get_account_by_number(number):
+        account1 = Account.objects.get(number=number)
+        return account1
+
     def import_accounts_from_file(filename):
         with open(filename, "r") as the_file:
             csv_reader = csv.reader(the_file, delimiter=',')
@@ -540,7 +544,7 @@ class reports():
                             report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
         
         #print(report_section)
-        print('%12s   %10s  %10s  %10s' %('section', 'total', 'user1', 'user2'))
+        print('%12s   %-40s  %10s  %10s  %10s' %('section', 'description', 'total', 'user1', 'user2'))
         for report_section_key in report_section.keys():
             #print(report_section_key)
             line_value = []
@@ -553,7 +557,8 @@ class reports():
             if line_value_sum == 0:
                 continue
             else:
-                print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+                account_class = Account.get_account_by_number(number=report_section_key)
+                print('%12s   %-40s  %10.2f  %10.2f  %10.2f' %(report_section_key, account_class.description, line_value[0], line_value[1], line_value[2]))
 
 
     def balance_sheet(date):
@@ -753,8 +758,8 @@ class JournalEntry(Document):
             # the interest expense were previously entered as credit to the account.
             transaction3 = Transaction.add_transaction(date=statement_line.date,
                         account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
-                        credit=0,
-                        debit=statement_line.interest, 
+                        credit=statement_line.interest,
+                        debit=0, 
                         source=None, 
                         source_ref=statement_line,
                         )
@@ -763,8 +768,8 @@ class JournalEntry(Document):
 
             transaction4 = Transaction.add_transaction(date=statement_line.date,
                         account_number=Account.objects.get(number=513010),
-                        credit=statement_line.interest,
-                        debit=0, 
+                        credit=0,
+                        debit=statement_line.interest, 
                         source=None, 
                         source_ref=statement_line,
                         )
