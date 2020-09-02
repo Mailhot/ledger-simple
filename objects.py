@@ -566,6 +566,38 @@ class reports():
         # assets - liabilities = net worth
         pass
 
+    def user_balance(date_from, date_to):
+        journal_entry_filtered = list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
+        for journal_entry in journal_entry_filtered:
+            print('journal_entry = ', journal_entry)
+            active_transactions = []
+
+            for transaction in journal_entry.transactions:
+                # sort transaction in order to have the credit first and then the debit
+                if len(active_transaction) in range(2, len(journal_entry.transactions), 2): # 2, 4, 6, up to len of transaction in current journal entry
+                    
+                    if transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
+                        active_transaction.insert(len(active_transaction)-1)
+                    else:
+                        active_transaction.append(transaction)
+            i = 1
+            
+
+            for transaction in active_transactions:
+                if i in range(2, len(journal_entry.transactions), 2):
+                    #transaction. ratio = transaction 2. ratio
+                    ##############################################
+        print(report_section)
+
+        print('%12s   %10s  %10s  %10s' %('section', 'total', 'user1', 'user2'))
+        for report_section_key in report_section.keys():
+            #print(report_section_key)
+            line_value = []
+            for report_line_key in report_section[report_section_key].keys():
+                # TODO: confirm this occurs in proper order
+                line_value.append(report_section[report_section_key][report_line_key])
+            print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+
 class JournalEntry(Document):
     id_ = IntField(required=True)
     date = DateTimeField(default=None)
