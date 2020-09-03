@@ -78,3 +78,27 @@ def statement_line_group_money_transfer(statement_line):
         interest = statement_line.interest
 
     return credit, debit, interest
+
+def init_dict_or_add(dict_, key, value):
+    """ this function takes a dict a key and a value.
+    it check if the key already exist in the dict, if not it adds the key / value
+    if it does it adds the value to the existing value
+    """
+    if key in dict_.keys():
+        dict_[key] += value
+    else:
+        dict_[key] = 0
+        dict_[key] += value
+    return dict_
+
+def init_dict_or_substract(dict_, key, value):
+    """ this function takes a dict a key and a value.
+    it check if the key already exist in the dict, if not it adds the key / value
+    if it does it adds the value to the existing value
+    """
+    if key in dict_.keys():
+        dict_[key] -= value
+    else:
+        dict_[key] = 0
+        dict_[key] -= value
+    return dict_

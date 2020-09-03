@@ -567,36 +567,67 @@ class reports():
         pass
 
     def user_balance(date_from, date_to):
+        imbalance_journal_entry = dict()
+
         journal_entry_filtered = list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
         for journal_entry in journal_entry_filtered:
             print('journal_entry = ', journal_entry)
             active_transactions = []
-
+            user_class  = list(User.objects())
+            user_sum = dict()
+            i = 0
             for transaction in journal_entry.transactions:
                 # sort transaction in order to have the credit first and then the debit
-                if len(active_transaction) in range(2, len(journal_entry.transactions), 2): # 2, 4, 6, up to len of transaction in current journal entry
-                    
-                    if transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
-                        active_transaction.insert(len(active_transaction)-1)
-                    else:
-                        active_transaction.append(transaction)
-            i = 1
+                print(transaction)
+                #     active_transactions.insert(len(active_transactions)-1, transaction)
+                # else:
+                #     active_transactions.append(transaction)
+
+                if transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
+                    print('true')
+                    for user in user_class: # 0, 2, 4, are the credit and need to be substracted
+                        user_sum = helpers.init_dict_or_substract(user_sum, user.id_, transaction.user_amount[str(user.id_)])
+                
+                #elif transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
+                else:
+                    for user in user_class: # 1, 3, 5, are the debit
+                        user_sum = helpers.init_dict_or_add(user_sum, user.id_, transaction.user_amount[str(user.id_)])
+
+                i += 1
+
             
+            # for i in range(len(journal_entry.transactions)):
+                
+                
+            #     i += 1
 
-            for transaction in active_transactions:
-                if i in range(2, len(journal_entry.transactions), 2):
-                    #transaction. ratio = transaction 2. ratio
-                    ##############################################
-        print(report_section)
+            print('user_sum', user_sum)
+            if user_sum[user_class[0].id_] != 0:
+                print('imbalance found!')
+                imbalance_journal_entry[journal_entry.id_] = {}
+                for user in user_class:
 
-        print('%12s   %10s  %10s  %10s' %('section', 'total', 'user1', 'user2'))
-        for report_section_key in report_section.keys():
+                    imbalance_journal_entry[journal_entry.id_][user.id_] = user_sum[user.id_]
+
+        
+        print(' ')
+        sum1 = 0
+        sum2 = 0
+        print('%12s  %10s  %10s' %('journal', 'user1', 'user2'))
+        for imbalance_journal_entry_keys in imbalance_journal_entry.keys():
             #print(report_section_key)
             line_value = []
-            for report_line_key in report_section[report_section_key].keys():
+            for imbalance_journal_entry_user_key in imbalance_journal_entry[imbalance_journal_entry_keys]:
                 # TODO: confirm this occurs in proper order
-                line_value.append(report_section[report_section_key][report_line_key])
-            print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
+                line_value.append(imbalance_journal_entry[imbalance_journal_entry_keys][imbalance_journal_entry_user_key])
+            print('%12s  %10.2f  %10.2f' %(imbalance_journal_entry_keys, line_value[0], line_value[1]))
+            sum1 += line_value[0]
+            sum2 += line_value[1]
+        print('%12s  %10.2f  %10.2f' %('sum', sum1, sum2))
+        if sum1 > sum2:
+            print('user1 owes %10.2f to user2' %sum1)
+        elif sum2 > sum1:
+            print('user2 owes %10.2f to user1' %sum2)
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
