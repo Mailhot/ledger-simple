@@ -613,6 +613,7 @@ class reports():
         print(' ')
         sum1 = 0
         sum2 = 0
+        # TODO: implement user based recap, not fixed values.
         print('%12s  %10s  %10s' %('journal', 'user1', 'user2'))
         for imbalance_journal_entry_keys in imbalance_journal_entry.keys():
             #print(report_section_key)
