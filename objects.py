@@ -26,18 +26,28 @@ ACCOUNT_TYPE = {'BC': 'Bank and Cash',
             'SUM': 'Sum',
             }
 
+ACTION_VALUES = {'Previous balance': self.update_previous_balance,
+                        'Purchases/debits': self.update_purchase,
+                        'Payments/credits': self.update_payments,
+                        'New current balance ($):': self.update_new_balance,
+                        'Credit charges ($)': self.update_frais_credits,
+                        #'Statement date:': self.update_name,
+                        }
+
 def init_counters():
     # Init the DB for counters, only required initially.
-    counter1 = Counters(id2='UserId', sequence_value=1)
+    counter1 = Counters(id2='UserId', sequence_value=0)
     counter1.save()
-    counter3 = Counters(id2='JournalEntryId', sequence_value=1)
+    counter3 = Counters(id2='JournalEntryId', sequence_value=0)
     counter3.save()
-    counter4 = Counters(id2='StatementLineId', sequence_value=1)
+    counter4 = Counters(id2='StatementLineId', sequence_value=0)
     counter4.save()
-    counter5 = Counters(id2='StatementId', sequence_value=1)
+    counter5 = Counters(id2='StatementId', sequence_value=0)
     counter5.save()
-    counter6 = Counters(id2='TransactionId', sequence_value=1)
+    counter6 = Counters(id2='TransactionId', sequence_value=0)
     counter6.save()
+    counter7 = Counters(id2='MonthlyBillId', sequence_value=0)
+    counter7.save()
 
 class Counters(Document):
     id2 = StringField(max_length=20)
@@ -175,6 +185,7 @@ class Account(Document):
 class Statement(Document):
     id_ = IntField(required=True)
     date = DateTimeField(default=datetime.now())
+    stop_date = DateTimeField(default=None)
     filename = StringField(required=True)
     start_balance = FloatField()
     end_balance = FloatField()
@@ -193,6 +204,132 @@ class Statement(Document):
 
         print("new statement saved: ", new_statement.id)
         return new_statement
+
+    
+    def __init__(self, start_date=None, stop_date=None): # bill = MonthlyBill()
+
+        self.name = None
+        self.transactions = []
+        self.start_date = start_date
+        self.stop_date = stop_date
+        self.previous_balance_report = 0
+        # self.previous_balance = 0
+        self.purchase_report = 0
+        self.purchase = 0
+        self.payments_report = 0
+        self.payments = 0
+        self.frais_credits_report = 0
+        self.frais_credits = 0
+        self.new_balance_report = 0
+        self.new_balance = 0
+
+        
+
+
+
+    def print(self): # TODO: to be arrange to work
+        print("MonthlyBill for : %s to %s" %(self.start_date, self.stop_date))
+        print("%10s, %30s, %10s, %3s" %('date', 'desctiption', 'amount', 'typed'))
+        for transaction in self.transactions:
+            print("%10s, %30s, %8.2f, %3s" %(transaction.date, transaction.description, transaction.amount, transaction.typed))
+
+    def recap(self): # TODO: to be arrange to work
+        self.purchase = 0
+        self.payments = 0
+        self.frais_credits = 0
+        self.new_balance = 0
+
+        grouped_expense = {} # expense grouped by category
+        distributed_expense = {} # expense summed by paying entity
+
+        for key in CATEGORY.keys():
+            if CATEGORY[key]['paying'] == True:
+                distributed_expense[key] = {"expense": 0, "payment": 0}
+
+        for transaction in self.transactions:
+
+            if transaction.typed not in grouped_expense.keys():
+                grouped_expense[transaction.typed] = 0 
+
+            if transaction.amount > 0:
+                grouped_expense[transaction.typed] += transaction.amount
+                
+                if transaction.typed != "fc":
+                    self.purchase += transaction.amount
+                else:
+                    self.frais_credits += transaction.amount
+
+                if transaction.typed in RATIO.keys():
+                    for key in RATIO[transaction.typed].keys():
+                        distributed_expense[key]["expense"] += RATIO[transaction.typed][key]*transaction.amount
+                else:
+                    distributed_expense[transaction.typed]["expense"] += transaction.amount
+
+            elif transaction.amount < 0:
+                self.payments += transaction.amount
+                if transaction.typed in RATIO.keys():
+                    for key in RATIO[transaction.typed].keys():
+                        distributed_expense[key]["payment"] += RATIO[transaction.typed][key]*transaction.amount
+                else:
+                    distributed_expense[transaction.typed]["payment"] += transaction.amount
+
+            else:
+                print("zero value transaction skipping.")
+        print(" ")
+
+        print("Printing recap for transaction between %s and %s." %(str(self.start_date)[:-9], str(self.stop_date)[:-9]))
+        for element in grouped_expense:
+            print(element, grouped_expense.get(element))
+        for element in distributed_expense:
+            print(element, distributed_expense.get(element))
+        self.new_balance = self.previous_balance_report + self.purchase + self.payments + self.frais_credits
+
+        print(" ")
+        print("%20s %10s %10s" %('Total', 'Calculated', 'Actual'))
+
+        print("%20s %10s %10.2f" %('Previous balance', "-", self.previous_balance_report))
+        print("%20s %10.2f %10.2f" %('Purchase/debits', self.purchase, self.purchase_report))
+        print("%20s %10.2f %10.2f" %('Payments/credits', self.payments, self.payments_report))
+        print("%20s %10.2f %10.2f" %('Frais de credits', self.frais_credits, self.frais_credits_report))
+        print("%20s %10.2f %10.2f" %('New current balance', self.new_balance, self.new_balance_report))
+
+
+    def update_purchase(self, value):
+        value = value.replace(',', '')
+        self.purchase_report = float(value)
+        print("Updated purchase = ", float(value))
+
+    def update_payments(self, value):
+        value = value.replace(',', '')
+        self.payments_report = float(value)
+        print("update_payments = ", float(value))
+
+    def update_new_balance(self, value):
+        value = value.replace(',', '')
+        self.new_balance_report = float(value)
+        print("update_new_balance = ", float(value))
+
+    def update_previous_balance(self, value):
+        value = value.replace(',', '')
+        if self.previous_balance_report == 0:
+            self.previous_balance_report = float(value)
+
+        print("previous_balance = ", self.previous_balance_report)
+
+    def update_frais_credits(self, value):
+        value = value.replace(',', '')
+        self.frais_credits_report = float(value)
+        print("update frais de credits = ", value)
+
+    # def update_name(self, value):
+    #     self.name = value
+    #     print("Updated name = ", self.name)
+
+    def update_values(self, list_):
+
+        action = ACTION_VALUES.get(list_[0])
+        if action:
+            action(list_[1])
 
 
 
@@ -361,6 +498,7 @@ class Transaction(Document):
     account_number = ReferenceField("Account", required=True)
     credit = FloatField(default=1)
     debit = FloatField(default=1)
+    description = StringField(max=250)
     # user_ratio = MapField(ReferenceField(User), default=None) # this should be used only in accounts i think
     source_ref = ReferenceField(StatementLine)
     source = StringField(default=None) # could be text or ref to other document ID (ex: Statment0001)
@@ -384,7 +522,7 @@ class Transaction(Document):
         return "%4s %10s %15s %8s %8s %5s %6s %20s" %(self.id_, self.date.date(), self.account_number.number, self.credit, self.debit, source_ref_id,
                                                         self.source, user_amount)
 
-    def add_transaction(date, account_number, credit, debit, source, source_ref):
+    def add_transaction(date, account_number, credit, debit, source, source_ref, description=None):
 
         #account_class = Account.get_account(account_number)
 
@@ -846,11 +984,118 @@ class JournalEntry(Document):
             new_journal_entry.save()
 
 
-# class StatementLineToTransaction(Document): # useless, this is already part of Transaction (source_ref), no need for a many to many
-#     """ clas to handle links between statement_line and journal entry"""
 
-#     statement_line = ReferenceField(StatementLine)
-#     journal_entry = ReferenceField(JournalEntry)
+def credit_card_bill_parser(file, ):
+
+    # bill = MonthlyBill()
+    bill = Statement.init_statement(file,)
+    balance_checker = False
+    stop_words = ['Détail des frais de crédit', 
+                    'Credit charge details',
+                    'Total:',
+                    'Total :                                    ',
+                    'Total :',
+                    'Détail des frais de crédit ',
+                    'Desjardins BONUSDOLLARS Rewards Program',
+                    ]
+
+    
+    # with open(file, "r",  encoding="ISO-8859-1") as the_file:
+    with open(file, "r",  encoding="utf-8") as the_file: #for some files the default encoding seem to fall back to iso-889-1 instead of utf-8
+
+            transaction_line_counter = None
+            file_reader = the_file.readlines()
+            line_count = 0
+            for line in file_reader:
+                elements = line[:-1].split('\t')
+                # filter the element a little
+                line_filtered = []
+
+                for item in elements:
+                    if item != "":
+                        line_filtered.append(item)
+
+
+
+                print(line_filtered)
+
+                # if line_filtered[0] == "Current transaction summary":
+                #     balance == True
+                # else line_filtered[0] == 
+                if len(line_filtered) < 1:
+                    continue
+                elif len(line_filtered) == 1:
+                    if line_filtered[0].startswith('Statement date:'):
+                        line_filtered = ['Statement date:', line_filtered[0][14:]]
+
+                # Get what we need to build the bill recap
+                bill.update_values(line_filtered)
+
+
+                # print("previous balance report = ", bill.previous_balance_report)
+
+
+                if line_filtered[0].startswith('Transactions made with the card of'):
+                    transaction_line_counter = 0
+                    print("Starting loggin line")
+                    continue
+
+                elif line_filtered[0].startswith('Transaction date'):
+                    transaction_line_counter = 2
+                    print("Starting loggin payments")
+                    continue
+
+                # elif line_filtered[0].startswith('Total:') or line_filtered[0].startswith('Détail des frais de crédit') or line_filtered[0].startswith('Total :'):
+
+                elif line_filtered[0].strip() in stop_words:
+                    transaction_line_counter = None
+                    print("No longer logging lines")
+                    continue
+
+                elif type(transaction_line_counter) == int:
+                    # print(transaction_line_counter)
+                    # print(line_filtered[0])
+                    # print('\n'.join(difflib.ndiff([line_filtered[0]], [stop_words[0]])))
+                    # if line_filtered[0] != stop_words[0]:
+                    #     print('they are the same word')
+                    # print(type(stop_words[0]))
+                    transaction_line_counter += 1
+                    if transaction_line_counter <= 2: # skip first line
+                        continue
+                    else:
+                        datetime_object = parse_date(line_filtered[0])
+                        datetime_object_posted = parse_date(line_filtered[1])
+
+                        if line_filtered[4].startswith('CR'):
+                            credit = float(line_filtered[4][2:])
+                            debit = 0
+
+                        else:
+                            debit = float(line_filtered[4])
+                            credit = 0
+                        #TODO: Need to add the journal entry and then the transaction pair.
+                        transaction1 = Transaction.add_transaction(date=datetime_object,
+                                                                    account_number=Account.get_account_by_number(211100)
+                                                                    description=line_filtered[3],
+                                                                    credit=credit,
+                                                                    debit=debit,
+                                                                    typed=line_filtered[5],
+                                                                    
+                                                                    date_posted=datetime_object_posted,
+                                                                    number=line_filtered[2],
+                                                                    currency=default_currency,
+                                                                    )
+                        
+                        transaction1.source_ref = bill
+                        # bill.transactions.append(transaction1)
+                        # bill.save()
+
+    bill.date = min(transaction.date for transaction in bill.transactions)
+    bill.stop_date = max(transaction.date for transaction in bill.transactions)
+    bill.save()
+
+    return bill
+
 
 class JournalEntryToTransaction(Document):
 
