@@ -1003,96 +1003,102 @@ def credit_card_bill_parser(file, ):
     # with open(file, "r",  encoding="ISO-8859-1") as the_file:
     with open(file, "r",  encoding="utf-8") as the_file: #for some files the default encoding seem to fall back to iso-889-1 instead of utf-8
 
-            transaction_line_counter = None
-            file_reader = the_file.readlines()
-            line_count = 0
-            for line in file_reader:
-                elements = line[:-1].split('\t')
-                # filter the element a little
-                line_filtered = []
+        transaction_line_counter = None
+        file_reader = the_file.readlines()
+        line_count = 0
+        for line in file_reader:
+            elements = line[:-1].split('\t')
+            # filter the element a little
+            line_filtered = []
 
-                for item in elements:
-                    if item != "":
-                        line_filtered.append(item)
+            for item in elements:
+                if item != "":
+                    line_filtered.append(item)
 
 
 
-                print(line_filtered)
+            print(line_filtered)
 
-                # if line_filtered[0] == "Current transaction summary":
-                #     balance == True
-                # else line_filtered[0] == 
-                if len(line_filtered) < 1:
+            # if line_filtered[0] == "Current transaction summary":
+            #     balance == True
+            # else line_filtered[0] == 
+            if len(line_filtered) < 1:
+                continue
+            elif len(line_filtered) == 1:
+                if line_filtered[0].startswith('Statement date:'):
+                    line_filtered = ['Statement date:', line_filtered[0][14:]]
+
+            # Get what we need to build the bill recap
+            bill.update_values(line_filtered)
+
+
+            # print("previous balance report = ", bill.previous_balance_report)
+
+
+            if line_filtered[0].startswith('Transactions made with the card of'):
+                transaction_line_counter = 0
+                print("Starting loggin line")
+                continue
+
+            elif line_filtered[0].startswith('Transaction date'):
+                transaction_line_counter = 2
+                print("Starting loggin payments")
+                continue
+
+            # elif line_filtered[0].startswith('Total:') or line_filtered[0].startswith('Détail des frais de crédit') or line_filtered[0].startswith('Total :'):
+
+            elif line_filtered[0].strip() in stop_words:
+                transaction_line_counter = None
+                print("No longer logging lines")
+                continue
+
+            elif type(transaction_line_counter) == int:
+                # print(transaction_line_counter)
+                # print(line_filtered[0])
+                # print('\n'.join(difflib.ndiff([line_filtered[0]], [stop_words[0]])))
+                # if line_filtered[0] != stop_words[0]:
+                #     print('they are the same word')
+                # print(type(stop_words[0]))
+                transaction_line_counter += 1
+                if transaction_line_counter <= 2: # skip first line
                     continue
-                elif len(line_filtered) == 1:
-                    if line_filtered[0].startswith('Statement date:'):
-                        line_filtered = ['Statement date:', line_filtered[0][14:]]
+                else:
+                    datetime_object = parse_date(line_filtered[0])
+                    datetime_object_posted = parse_date(line_filtered[1])
 
-                # Get what we need to build the bill recap
-                bill.update_values(line_filtered)
+                    if line_filtered[4].startswith('CR'):
+                        credit = float(line_filtered[4][2:])
+                        debit = 0
 
-
-                # print("previous balance report = ", bill.previous_balance_report)
-
-
-                if line_filtered[0].startswith('Transactions made with the card of'):
-                    transaction_line_counter = 0
-                    print("Starting loggin line")
-                    continue
-
-                elif line_filtered[0].startswith('Transaction date'):
-                    transaction_line_counter = 2
-                    print("Starting loggin payments")
-                    continue
-
-                # elif line_filtered[0].startswith('Total:') or line_filtered[0].startswith('Détail des frais de crédit') or line_filtered[0].startswith('Total :'):
-
-                elif line_filtered[0].strip() in stop_words:
-                    transaction_line_counter = None
-                    print("No longer logging lines")
-                    continue
-
-                elif type(transaction_line_counter) == int:
-                    # print(transaction_line_counter)
-                    # print(line_filtered[0])
-                    # print('\n'.join(difflib.ndiff([line_filtered[0]], [stop_words[0]])))
-                    # if line_filtered[0] != stop_words[0]:
-                    #     print('they are the same word')
-                    # print(type(stop_words[0]))
-                    transaction_line_counter += 1
-                    if transaction_line_counter <= 2: # skip first line
-                        continue
                     else:
-                        datetime_object = parse_date(line_filtered[0])
-                        datetime_object_posted = parse_date(line_filtered[1])
+                        debit = float(line_filtered[4])
+                        credit = 0
+                    #TODO: Need to add the journal entry and then the transaction pair.
+                    newline1 = Transaction.add_transaction
+                    newline1 = StatementLine.create_line(date=datetime_object,
+                                                        account_number=Account.get_account_by_number(211100),
+                                                        account_type=None,
+                                                        line_number=line_filtered[2],
+                                                        description=line_filtered[3],
+                                                        credit=credit,
+                                                        debit=debit,
+                                                        interest=None,
+                                                        advance=None,
+                                                        reimbursement=None,
+                                                        balance=None,
+                                                        destination_account=line_filtered[5],
+                                                        )
+     
+                    
+                    newline1.statement = bill
+                    newline1.save()
 
-                        if line_filtered[4].startswith('CR'):
-                            credit = float(line_filtered[4][2:])
-                            debit = 0
+                    # bill.transactions.append(transaction1)
+                    bill.save()
 
-                        else:
-                            debit = float(line_filtered[4])
-                            credit = 0
-                        #TODO: Need to add the journal entry and then the transaction pair.
-                        transaction1 = Transaction.add_transaction(date=datetime_object,
-                                                                    account_number=Account.get_account_by_number(211100)
-                                                                    description=line_filtered[3],
-                                                                    credit=credit,
-                                                                    debit=debit,
-                                                                    typed=line_filtered[5],
-                                                                    
-                                                                    date_posted=datetime_object_posted,
-                                                                    number=line_filtered[2],
-                                                                    currency=default_currency,
-                                                                    )
-                        
-                        transaction1.source_ref = bill
-                        # bill.transactions.append(transaction1)
-                        # bill.save()
-
-    bill.date = min(transaction.date for transaction in bill.transactions)
-    bill.stop_date = max(transaction.date for transaction in bill.transactions)
-    bill.save()
+    #bill.date = min(transaction.date for transaction in bill.transactions)
+    #bill.stop_date = max(transaction.date for transaction in bill.transactions)
+    #bill.save()
 
     return bill
 
