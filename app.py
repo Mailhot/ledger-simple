@@ -24,13 +24,16 @@ if __name__ == "__main__":
 
     user1 = objects.User.objects[0]
     user2 = objects.User.objects[1]
+    
+    #objects.Account.drop_collection()
     #import_chart_of_account()
 
-    # objects.Statement.drop_collection()
-    # objects.StatementLine.drop_collection()
+    #objects.Statement.drop_collection()
+    #objects.StatementLine.drop_collection()
 
     #objects.Statement.import_statement_from_file('./.data/509066_2020-01.csv', ',', True)
     #objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
+    
     for object_ in list(objects.Statement.objects()):
         print(object_.id_)
     
@@ -38,12 +41,15 @@ if __name__ == "__main__":
     #objects.Transaction.drop_collection()
 
     #process_statement(4)
-    #process_statement(30)
+    #process_statement(64)
 
     #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     
+    #objects.credit_card_bill_parser('./.data/559828######4013_20200115.txt')
+    #process_statement(65)
+
 
 
     

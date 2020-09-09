@@ -26,13 +26,13 @@ ACCOUNT_TYPE = {'BC': 'Bank and Cash',
             'SUM': 'Sum',
             }
 
-ACTION_VALUES = {'Previous balance': self.update_previous_balance,
-                        'Purchases/debits': self.update_purchase,
-                        'Payments/credits': self.update_payments,
-                        'New current balance ($):': self.update_new_balance,
-                        'Credit charges ($)': self.update_frais_credits,
-                        #'Statement date:': self.update_name,
-                        }
+# ACTION_VALUES = {'Previous balance': self.update_previous_balance,
+#                         'Purchases/debits': self.update_purchase,
+#                         'Payments/credits': self.update_payments,
+#                         'New current balance ($):': self.update_new_balance,
+#                         'Credit charges ($)': self.update_frais_credits,
+#                         #'Statement date:': self.update_name,
+#                         }
 
 def init_counters():
     # Init the DB for counters, only required initially.
@@ -192,7 +192,14 @@ class Statement(Document):
     closed = BooleanField(default=False)
     #lines = ListField(ReferenceField(StatementLine))
 
+
+
+
     def init_statement(filename,):
+
+        
+
+
         # check if already exist.
         new_statement = Statement(id_=getNextSequenceValue('StatementId'),
                                 date=None,
@@ -200,32 +207,33 @@ class Statement(Document):
                                 start_balance=None,
                                 end_balance=None
                                 )
+
+        new_statement.name = None
+        new_statement.transactions = []
+        new_statement.start_date = None
+        new_statement.stop_date = None
+        new_statement.previous_balance_report = 0
+        # self.previous_balance = 0
+        new_statement.purchase_report = 0
+        new_statement.purchase = 0
+        new_statement.payments_report = 0
+        new_statement.payments = 0
+        new_statement.frais_credits_report = 0
+        new_statement.frais_credits = 0
+        new_statement.new_balance_report = 0
+        new_statement.new_balance = 0
+
+
+
+
         new_statement.save()
 
         print("new statement saved: ", new_statement.id)
         return new_statement
 
-    
-    def __init__(self, start_date=None, stop_date=None): # bill = MonthlyBill()
 
-        self.name = None
-        self.transactions = []
-        self.start_date = start_date
-        self.stop_date = stop_date
-        self.previous_balance_report = 0
-        # self.previous_balance = 0
-        self.purchase_report = 0
-        self.purchase = 0
-        self.payments_report = 0
-        self.payments = 0
-        self.frais_credits_report = 0
-        self.frais_credits = 0
-        self.new_balance_report = 0
-        self.new_balance = 0
 
         
-
-
 
     def print(self): # TODO: to be arrange to work
         print("MonthlyBill for : %s to %s" %(self.start_date, self.stop_date))
@@ -326,6 +334,13 @@ class Statement(Document):
     #     print("Updated name = ", self.name)
 
     def update_values(self, list_):
+        ACTION_VALUES = {'Previous balance': self.update_previous_balance,
+                'Purchases/debits': self.update_purchase,
+                'Payments/credits': self.update_payments,
+                'New current balance ($):': self.update_new_balance,
+                'Credit charges ($)': self.update_frais_credits,
+                #'Statement date:': self.update_name,
+                }
 
         action = ACTION_VALUES.get(list_[0])
         if action:
@@ -470,8 +485,12 @@ class StatementLine(Document): #
 
 
 
-    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=None):
+    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=0):
         
+        if destination_account == None or destination_account == '':
+            destination_account = 0
+
+
         new_statement_line = StatementLine(id_=getNextSequenceValue('StatementLineId'),
                                         date=date,
                                         account_number=account_number,
@@ -797,12 +816,28 @@ class JournalEntry(Document):
 
         # Step 1
         # Check if existing transaction are present, update source if yes.
-        open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
-                                                    source_ref=None, 
-                                                    date=statement_line.date, 
-                                                    #credit=statement_line.debit, 
-                                                    #debit=statement_line.credit,
-                                                    ))
+        print('statement_line.account_type=', statement_line.account_type)
+        if statement_line.account_type is not None:
+            try:
+                open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                                                            source_ref=None, 
+                                                            date=statement_line.date, 
+                                                            #credit=statement_line.debit, 
+                                                            #debit=statement_line.credit,
+                                                            ))
+            except:
+                open_transaction = []
+
+        elif statement_line.account_type == None:
+            try:
+                open_transaction=list(Transaction.objects(number=Account.get_account_by_number(int(statement_line.account_number)),
+                                                            source_ref=None, 
+                                                            date=statement_line.date, 
+                                                            #credit=statement_line.debit, 
+                                                            #debit=statement_line.credit,
+                                                            ))
+            except:
+                open_transaction = []
 
         if len(open_transaction) > 0:
 
@@ -848,11 +883,22 @@ class JournalEntry(Document):
             # consolidate advance / reimbursement in credit / debit transaction.
             statement_line_credit, statement_line_debit, statement_line_interest = helpers.statement_line_group_money_transfer(statement_line)
 
+            try:
+                if not statement_line.account_type:
+                    print('no account type')
+                    account1 = Account.get_account_by_number(int(statement_line.account_number))
+                else:
+                    account1 = Account.get_account(int(statement_line.account_number), statement_line.account_type)
+            except:
+                print('account1 = ', account1)
+                print('this account does not exist! %s' %statement_line.account_number)
+                exit()
 
+            print('account1 = ', account1)
         
             # add first Transaction from the source account in statement line.
             transaction1 = Transaction.add_transaction(date=statement_line.date,
-                                                        account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                                                        account_number=account1,
                                                         credit=statement_line_credit,
                                                         debit=statement_line_debit, 
                                                         source=None, 
@@ -1067,16 +1113,16 @@ def credit_card_bill_parser(file, ):
                     datetime_object_posted = parse_date(line_filtered[1])
 
                     if line_filtered[4].startswith('CR'):
-                        credit = float(line_filtered[4][2:])
+                        credit = float(line_filtered[4][2:].replace(',', ''))
                         debit = 0
 
                     else:
-                        debit = float(line_filtered[4])
+                        debit = float(line_filtered[4].replace(',', ''))
                         credit = 0
                     #TODO: Need to add the journal entry and then the transaction pair.
                     newline1 = Transaction.add_transaction
                     newline1 = StatementLine.create_line(date=datetime_object,
-                                                        account_number=Account.get_account_by_number(211100),
+                                                        account_number=211100,
                                                         account_type=None,
                                                         line_number=line_filtered[2],
                                                         description=line_filtered[3],
@@ -1086,7 +1132,8 @@ def credit_card_bill_parser(file, ):
                                                         advance=None,
                                                         reimbursement=None,
                                                         balance=None,
-                                                        destination_account=line_filtered[5],
+                                                        destination_account=line_filtered[6],
+                                                        statement=bill,
                                                         )
      
                     
@@ -1102,6 +1149,59 @@ def credit_card_bill_parser(file, ):
 
     return bill
 
+def update_purchase(self, value):
+        value = value.replace(',', '')
+        self.purchase_report = float(value)
+        print("Updated purchase = ", float(value))
+
+def update_payments(self, value):
+    value = value.replace(',', '')
+    self.payments_report = float(value)
+    print("update_payments = ", float(value))
+
+def update_new_balance(self, value):
+    value = value.replace(',', '')
+    self.new_balance_report = float(value)
+    print("update_new_balance = ", float(value))
+
+def update_previous_balance(self, value):
+    value = value.replace(',', '')
+    if self.previous_balance_report == 0:
+        self.previous_balance_report = float(value)
+
+    print("previous_balance = ", self.previous_balance_report)
+
+def update_frais_credits(self, value):
+    value = value.replace(',', '')
+    self.frais_credits_report = float(value)
+    print("update frais de credits = ", value)
+
+def update_name(self, value):
+    self.name = value
+    print("Updated name = ", self.name)
+
+def update_values(self, list_):
+
+    action = self.VALUES.get(list_[0])
+    if action:
+        action(list_[1])
+
+def parse_date(date_str):
+    MONTHS = {'avr': 'apr',
+            }
+
+    # print(datetime.datetime(2020, 5, 2).strftime('%d %b %Y'))
+
+
+    # Convert date string in the format 12 Dec 2012 in an object
+    datetime_str2 = date_str.lower()
+
+    datetime_split = datetime_str2.split(' ')
+    if datetime_split[1] in MONTHS.keys():
+        datetime_split[1] = MONTHS.get(datetime_split[1])
+        datetime_str2 = " ".join(datetime_split)
+    datetime_object = datetime.strptime(datetime_str2, '%d %b %Y')
+    return datetime_object
 
 class JournalEntryToTransaction(Document):
 
