@@ -355,17 +355,19 @@ class Statement(Document):
         """
         
         created_statement = False
+        current_statement = None
 
         if Statement.objects(): # check if a statement objects already exists.
-            if Statement.objects.get(filename=filename): # if a statement already exist confirm it has a different filename
+            if len(list(Statement.objects(filename=filename))) > 1: # if a statement already exist confirm it has a different filename
                 print("Filename already imported.")
                 choice = input("Do you want to continue with file import? [yes] / no >> ")
                 if choice == 'no' or choice == 'n':
                     return None
                 elif choice == 'yes' or choice == 'y' or choice == "":
                     current_statement = Statement.objects.get(filename=filename)
+        
 
-        else:
+        if current_statement == None:
             #create the new statement instance.
             current_statement = Statement.init_statement(filename)
             created_statement = True
@@ -939,13 +941,14 @@ class JournalEntry(Document):
                                                             account_number=past_output_transaction.account_number,
                                                             credit=statement_line_debit,
                                                             debit=statement_line_credit, 
-                                                            source=None, 
+                                                            source=None,
                                                             source_ref=None, # will be either none or the other statement line that confirm this transaction if the account is bank and cash (has a statement)
                                                             )
                 transaction2.save()
 
             else:
-                if statement_line.destination_account != None:
+                print('statement_line destination account = ', statement_line.destination_account)
+                if statement_line.destination_account not in [None, 0]:
                     result_account = Account.objects.get(number=statement_line.destination_account)
                 else:
                     result_account = helpers.choose_account()
@@ -1113,12 +1116,12 @@ def credit_card_bill_parser(file, ):
                     datetime_object_posted = parse_date(line_filtered[1])
 
                     if line_filtered[4].startswith('CR'):
-                        credit = float(line_filtered[4][2:].replace(',', ''))
-                        debit = 0
+                        credit = 0
+                        debit = float(line_filtered[4][2:].replace(',', ''))
 
                     else:
-                        debit = float(line_filtered[4].replace(',', ''))
-                        credit = 0
+                        debit = 0
+                        credit = float(line_filtered[4].replace(',', ''))
                     #TODO: Need to add the journal entry and then the transaction pair.
                     newline1 = Transaction.add_transaction
                     newline1 = StatementLine.create_line(date=datetime_object,
