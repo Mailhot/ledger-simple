@@ -387,8 +387,10 @@ class Statement(Document):
 
                 if len(line) > 1: # find the first line that is now empty.
                     if created_statement == True:
-                        if line[6] != '':
-                            destination_account = int(line[6])
+                        if len(line) == 15:
+                            if line[14] not in [None, 0, '']:
+                                destination_account = int(line[14])
+                                
                         else:
                             destination_account = None
 
