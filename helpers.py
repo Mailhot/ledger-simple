@@ -102,3 +102,30 @@ def init_dict_or_substract(dict_, key, value):
         dict_[key] = 0
         dict_[key] -= value
     return dict_
+
+def choose_from_list(list_):
+    if len(list_) > 1:
+
+        item_number = 1
+        for item in list_:
+
+            print(item_number, item)
+            item_number += 1
+        while True:
+
+            item_choice = input('what item would you like to choose? [1]>> ')
+            if item_choice == '':
+                item_choice = 1
+
+            try:
+                item_choice_int = int(item_choice)
+            except ValueError:
+                print('%s is not a valid choice, try again.' %item_choice)
+                continue
+
+            return list_[item_choice_int]
+    elif len(list_) == 1:
+        return list_[0]
+    else:
+        return None
+

@@ -30,39 +30,55 @@ if __name__ == "__main__":
 
     objects.Statement.drop_collection()
     objects.StatementLine.drop_collection()
+    objects.JournalEntry.drop_collection()
+    objects.Transaction.drop_collection()
 
 
     
     for object_ in list(objects.Statement.objects()):
         print(object_.id_)
     
-    objects.JournalEntry.drop_collection()
-    objects.Transaction.drop_collection()
+
 
 
     objects.Statement.import_statement_from_file('./.data/509066_2020-01.csv', ',', True)
-    #objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
+    process_statement(112)
 
+    #objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
     #process_statement(4)
-    process_statement(89)
+    
 
     
-    objects.credit_card_bill_parser('./.data/559828######4013_20200115.txt')
-    process_statement(90)
+    # objects.credit_card_bill_parser('./.data/559828######4013_20200115.txt')
+    # process_statement(90)
 
-    objects.credit_card_bill_parser('./.data/559828######4013_20200213.txt')
-    process_statement(91)
+    # objects.credit_card_bill_parser('./.data/559828######4013_20200213.txt')
+    # process_statement(91)
 
 
-    objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
-    process_statement(92)
+    # objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
+    # process_statement(92)
 
-    objects.Statement.import_statement_from_file('./.data/2020-03_releve.csv', ',', True)
-    process_statement(93)
+    #objects.Statement.import_statement_from_file('./.data/2020-03_releve.csv', ',', True)
+    #process_statement(95)
 
-    #objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.Statement.import_statement_from_file('./.data/2020-04_releve.csv', ',', True)
+    # process_statement(96)
 
-    objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.Statement.import_statement_from_file('./.data/2020-05_releve.csv', ',', True)
+    # process_statement(105)
+
+    # objects.Statement.import_statement_from_file('./.data/2020-06_releve.csv', ',', True)
+    # process_statement(108)
+
+    objects.Statement.import_statement_from_file('./.data/2020-07_releve.csv', ',', True)
+    process_statement(113)    
+
+
+
+    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+
+    #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     
     

@@ -844,19 +844,36 @@ class JournalEntry(Document):
                 open_transaction = []
 
         if len(open_transaction) > 0:
+            statement_line_sum = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
+            # credit = FloatField(default=0)
+            # debit = FloatField(default=0)
+            # interest = FloatField(default=0)
+            # advance = FloatField(default=0)
+            # reimbursement = FloatField(default=0)
 
             print('here are the open transaction that matches this one. ')
             i = 0
+            warning_transaction = None
             Transaction.header()
             for transaction in open_transaction:
                 i += 1
                 print(i, transaction)
+                transaction_sum = transaction.credit + transaction.debit
+                if transaction_sum != statement_line_sum:
+                    warning_transaction = True
+
+
+
+
 
             print("Select which transaction you would like to link to this one. (presse enter to skip and create a new one)")
+            if warning_transaction == True:
+                print("Warning!!! some transaction does not have the same amount as statement_line!!!")
             transaction_choice = input(">> ")
 
             if transaction_choice == '':
                 print('transaction skipped')
+                open_transaction = []
                 pass
 
             else:
@@ -873,7 +890,7 @@ class JournalEntry(Document):
 
 
 
-        else: # No transaction matches this statement line, so we create a new one.
+        if len(open_transaction) == 0: # No transaction matches this statement line, so we create a new one.
 
             try:
                 #existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
@@ -929,7 +946,7 @@ class JournalEntry(Document):
 
                 # Find the journal entry with this line (assuming it exist)
                 # TODO: what if it does not exist?
-                past_journal_entry = JournalEntry.objects.get(statement_line=selected_past_statement_line)
+                past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
                 past_output_transaction = past_journal_entry.transactions[-1]
                 Account.header()
                 print(past_output_transaction.account_number)
