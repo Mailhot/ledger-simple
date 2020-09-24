@@ -1,4 +1,6 @@
 import objects
+from os import listdir
+
 def choose_account():
     exit_bol = False
 
@@ -129,3 +131,8 @@ def choose_from_list(list_):
     else:
         return None
 
+
+
+def find_csv_filenames( path_to_dir, suffix=".csv" ):
+    filenames = listdir(path_to_dir)
+    return [ filename for filename in filenames if filename.endswith( suffix ) ]

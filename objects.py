@@ -448,6 +448,7 @@ class Statement(Document):
         for line in StatementLine.objects(statement__in=current_statement_list): 
 
             print(line)
+        return current_statement
 
 
 
@@ -486,6 +487,17 @@ class StatementLine(Document): #
             result = 0
         return result
 
+    def search_line(date, account_number, description, credit, debit, interest, advance, reimbursement):
+        # TODO: Finish this part.
+        results = StatementLine.objects(date=date,
+                                        account_number=account_number, 
+                                        description=description, 
+                                        credit=credit, 
+                                        debit=debit, 
+                                        interest=interest,
+                                        advance=advance, 
+                                        reimbursement=reimbursement,
+                                        )
 
 
 
@@ -791,6 +803,12 @@ class reports():
         elif sum2 > sum1:
             print('user2 owes %10.2f to user1' %sum2)
 
+
+        for key_ in imbalance_journal_entry.keys():
+            journal_entry1 = JournalEntry.objects.get(id_=key_)
+            print(journal_entry1.statement_line,)
+            print('    ', imbalance_journal_entry[key_])
+
 class JournalEntry(Document):
     id_ = IntField(required=True)
     date = DateTimeField(default=None)
@@ -820,7 +838,7 @@ class JournalEntry(Document):
 
         # Step 1
         # Check if existing transaction are present, update source if yes.
-        print('statement_line.account_type=', statement_line.account_type)
+        # print('statement_line.account_type=', statement_line.account_type)
         if statement_line.account_type is not None:
             try:
                 open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
@@ -863,9 +881,6 @@ class JournalEntry(Document):
                     warning_transaction = True
 
 
-
-
-
             print("Select which transaction you would like to link to this one. (presse enter to skip and create a new one)")
             if warning_transaction == True:
                 print("Warning!!! some transaction does not have the same amount as statement_line!!!")
@@ -888,18 +903,17 @@ class JournalEntry(Document):
                 new_journal_entry = JournalEntry.objects.get(transactions__in=[selected_transaction])
 
 
-
-
         if len(open_transaction) == 0: # No transaction matches this statement line, so we create a new one.
 
-            try:
+            try: #TODO: if this fail for other reason than no result found, we wont see the error!
                 #existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
                 existing_journal_entry = StatementLineToJournalEntry.objects.get(statement_line=statement_line)
 
-                print('line found')
+                # print('line found')
 
             except:
-                print('No JournalEntry exist on this line, creating new one.')
+                pass
+                # print('No JournalEntry exist on this line, creating new one.')
 
             # consolidate advance / reimbursement in credit / debit transaction.
             statement_line_credit, statement_line_debit, statement_line_interest = helpers.statement_line_group_money_transfer(statement_line)
@@ -935,55 +949,44 @@ class JournalEntry(Document):
                                                             id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
                                                             ))
 
-            print('past_statement_line = ', past_statement_line)
+            # print('past_statement_line = ', past_statement_line)
 
 
-            if len(past_statement_line) > 0:
+            print('statement_line destination account = ', statement_line.destination_account)
+            if statement_line.destination_account not in [None, 0]:
+                result_account = Account.objects.get(number=statement_line.destination_account)
+            elif len(past_statement_line) > 0:
                 # TODO: Would need to find the most recent past_statement_line to be able to have proper account if modification were made.
                 # Until we get the most recent, we use the last one.
                 selected_past_statement_line = past_statement_line[-1] # Best way to find the earlyest line for now. (need improvement.)
-                print(selected_past_statement_line.to_json())
+                # print(selected_past_statement_line.to_json())
 
                 # Find the journal entry with this line (assuming it exist)
                 # TODO: what if it does not exist?
                 past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
                 past_output_transaction = past_journal_entry.transactions[-1]
                 Account.header()
-                print(past_output_transaction.account_number)
+                # print(past_output_transaction.account_number)
 
                 # threat_choice = input('Would you like to select the destination account manually? (y)/n >> ')
                 # if threat_choice == 'y':
                 #     pass
                 #     # TODO: revert to next else statement (manual account choice.)
+                result_account = past_output_transaction.account_number
 
-                transaction2 = Transaction.add_transaction(date=statement_line.date,
-                                                            account_number=past_output_transaction.account_number,
-                                                            credit=statement_line_debit,
-                                                            debit=statement_line_credit, 
-                                                            source=None,
-                                                            source_ref=None, # will be either none or the other statement line that confirm this transaction if the account is bank and cash (has a statement)
-                                                            )
-                transaction2.save()
-
+                
             else:
-                print('statement_line destination account = ', statement_line.destination_account)
-                if statement_line.destination_account not in [None, 0]:
-                    result_account = Account.objects.get(number=statement_line.destination_account)
-                else:
-                    result_account = helpers.choose_account()
+                result_account = helpers.choose_account()
 
-                transaction2 = Transaction.add_transaction(date=statement_line.date,
-                        account_number=result_account,
-                        credit=statement_line_debit,
-                        debit=statement_line_credit, 
-                        source=None, 
-                        source_ref=None,
-                        )
+            transaction2 = Transaction.add_transaction(date=statement_line.date,
+                                                        account_number=result_account,
+                                                        credit=statement_line_debit,
+                                                        debit=statement_line_credit, 
+                                                        source=None, 
+                                                        source_ref=None,
+                                                        )
 
-                transaction2.save()
-
-            
-
+            transaction2.save()
 
             new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
                                             date=statement_line.date,
@@ -1001,18 +1004,28 @@ class JournalEntry(Document):
             # TODO: this would need a function to itself.
             print('transaction2.user_amount = ', transaction2.user_amount)
             if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
-                print('Output account has no ratio set, use parent ratio?')
-                print('Parent ratio: ', transaction1.account_number.user_ratio)
-                use_parent_ratio_choice = input('(y)/n >> ')
-                if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
-                    transaction2.user_amount = transaction1.user_amount
-                    transaction2.save()
-                    print('parent ratio used')
+                ratio_choice = None
+                output_ratio = None
+                output_ratio = check_rules(new_journal_entry)
+
+                if output_ratio != None:
+                    ratio_choice = output_ratio[0]
 
                 else:
-                    ratio_choice = input('What ratio should we set to user1? >> ')
-                    users = list(User.objects())
+                    print('Output account has no ratio set, use parent ratio?')
+                    print('Parent ratio: ', transaction1.account_number.user_ratio)
+                    use_parent_ratio_choice = input('(y)/n >> ')
+                    if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
+                        transaction2.user_amount = transaction1.user_amount
+                        transaction2.save()
+                        # print('parent ratio used')
 
+                    else:
+                        ratio_choice = input('What ratio should we set to user1 (0-1)? >> ')
+
+                if ratio_choice != None:
+
+                    users = list(User.objects())
                     transaction2.user_amount = {str(users[0].id_): float(ratio_choice) * (transaction2.credit + transaction2.debit), 
                                                 str(users[1].id_): (1-float(ratio_choice)) * (transaction2.credit + transaction2.debit)}
                     transaction2.save()
@@ -1233,6 +1246,20 @@ class JournalEntryToTransaction(Document):
 def get_exchange_rate():
     # Keep on
     pass
+
+def check_rules(journal_entry, ):
+    if journal_entry.statement_line.description == 'SUBWAY # 27934           COTEAU-DU-LACQC' and journal_entry.statement_line.credit < 20:
+        return [1,0]
+
+    elif journal_entry.statement_line.description == "MCDONALD'S #23799  Q04   SAINT-ZOTIQUEQC" and journal_entry.statement_line.credit < 20:
+        return [1,0]
+
+    elif journal_entry.statement_line.description == "JARDINS ST CLET          SAINT-CLET   QC":
+        return [1.0]
+
+    else:
+        return None
+
 
 if __name__ == "__main__":
     #Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',')
