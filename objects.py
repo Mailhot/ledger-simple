@@ -803,11 +803,19 @@ class reports():
         elif sum2 > sum1:
             print('user2 owes %10.2f to user1' %sum2)
 
+        # # this print all imblance statement line with user amount under it.
+        # for key_ in imbalance_journal_entry.keys():
+        #     journal_entry1 = JournalEntry.objects.get(id_=key_)
+        #     print(journal_entry1.statement_line,)
+        #     print('    ', imbalance_journal_entry[key_])
 
-        for key_ in imbalance_journal_entry.keys():
-            journal_entry1 = JournalEntry.objects.get(id_=key_)
-            print(journal_entry1.statement_line,)
-            print('    ', imbalance_journal_entry[key_])
+        # this print imbalance per user with their respective amount after it.
+        for user in list(User.objects()):
+            print(' ')
+            print('Imbalance transaction for user ', user.name)
+            for key_ in imbalance_journal_entry.keys():
+                journal_entry1 = JournalEntry.objects.get(id_=key_)
+                print(journal_entry1.id_, str(journal_entry1.statement_line.date)[:-9], journal_entry1.statement_line.account_number, journal_entry1.statement_line.description, imbalance_journal_entry[key_][user.id_])
 
 class JournalEntry(Document):
     id_ = IntField(required=True)

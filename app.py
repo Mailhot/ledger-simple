@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
 
 
-    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.user_balance(datetime.date(year=2020, month=8, day=1), datetime.date(year=2020, month=9, day=25))
 
     #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
