@@ -79,11 +79,6 @@ if __name__ == "__main__":
     #     print(object_.id_)
     
 
-
-
-    # objects.Statement.import_statement_from_file('./.data/509066_2020-01.csv', ',', True)
-    # process_statement(114)
-
     # statement1 = objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
@@ -104,68 +99,7 @@ if __name__ == "__main__":
     # objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
     # process_statement(20, force=True)
 
-    #objects.Statement.import_statement_from_file('./.data/2020-03_releve.csv', ',', True)
-    #process_statement(95)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-04_releve.csv', ',', True)
-    # process_statement(96)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-05_releve.csv', ',', True)
-    # process_statement(105)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-06_releve.csv', ',', True)
-    # process_statement(108)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-07_releve.csv', ',', True)
-    # process_statement(113)    
-    #process_statement(4)
     
-
-    
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200115.txt')
-    # process_statement(12)
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200213.txt')
-    # process_statement(91)
-  
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200312.txt')
-    # process_statement(114)
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200414.txt')
-    # process_statement(115)
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200513.txt')
-    # process_statement(116)
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200611.txt')
-    # process_statement(117)
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200714.txt')
-    # process_statement(118) 
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200813.txt')
-    # process_statement(119) 
-
-    # objects.credit_card_bill_parser('./.data/559828######4013_20200914.txt')
-    # process_statement(121) 
-
-    # objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
-    # process_statement(92)
-
-    #objects.Statement.import_statement_from_file('./.data/2020-03_releve.csv', ',', True)
-    #process_statement(95)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-04_releve.csv', ',', True)
-    # process_statement(96)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-05_releve.csv', ',', True)
-    # process_statement(105)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-06_releve.csv', ',', True)
-    # process_statement(108)
-
-    # objects.Statement.import_statement_from_file('./.data/2020-07_releve.csv', ',', True)
-    # process_statement(113)    
 
 
 
