@@ -53,6 +53,8 @@ def process_statement(id_, force=False):
 
 if __name__ == "__main__":
 
+    # objects.Counters.drop_collection()
+
     # objects.init_counters()
     
     base_folder = './.data'
@@ -82,15 +84,34 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # Process the accounts.
+    # # Process the accounts.
     # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    # csv_files.sort()
+    # # csv_files_list = 
     # for file in csv_files:
     #     print(file)
     #     statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', True)
     #     process_statement(statement1.id_)
 
+    # # Add an account
+    # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}
+
+    # new_account = objects.Account.add_account(number=111102,
+    #                                         parent_account=None,
+    #                                         child_account=None, 
+    #                                         description='CASH Joanie',
+    #                                         type_='BC',
+    #                                         user_ratio=user_ratio,
+    #                                         account_number=None, 
+    #                                         account_type=None,
+    #                                         )
+    # new_account.save()
+
+
+
     # # process the credit card bills
     # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
+    # txt_files.sort()
     # for file in txt_files:
     #     print(file)
     #     statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
@@ -103,7 +124,7 @@ if __name__ == "__main__":
 
 
 
-    objects.reports.user_balance(datetime.date(year=2020, month=8, day=1), datetime.date(year=2020, month=9, day=25))
+    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=9, day=25))
 
     #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
