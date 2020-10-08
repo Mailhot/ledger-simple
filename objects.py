@@ -870,7 +870,7 @@ class JournalEntry(Document):
                 #                                             #credit=statement_line.debit, 
                 #                                             #debit=statement_line.credit,
                 #                                             ))
-            except:
+            except DoesNotExist:
                 open_transaction = []
 
         elif statement_line.account_type == None:
@@ -885,10 +885,11 @@ class JournalEntry(Document):
             #                                                 #credit=statement_line.debit, 
             #                                                 #debit=statement_line.credit,
             #                                                 ))
-            except:
+            except DoesNotExist:
                 open_transaction = []
 
         if len(open_transaction) > 0:
+            # TODO: this can be removed as we now get transaction with same price with the aggregate function
             statement_line_sum = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
             
 
@@ -900,7 +901,7 @@ class JournalEntry(Document):
             for transaction in open_transaction:
                 i += 1
                 # print('transaction =', transaction)
-                transaction = Transaction.objects.get(id=transaction['_id'])
+                transaction = Transaction.objects.get(id=transaction['_id']) # we need to keep this as it transform open_transaction from a list of dict to list of documents
                 transaction_document.append(transaction)
                 print(i, transaction)
                 transaction_sum = transaction.credit + transaction.debit
@@ -910,12 +911,11 @@ class JournalEntry(Document):
             open_transaction = transaction_document # we need a list of doc not a dict as the aggregate gives us.
 
 
-
             print("Select which transaction you would like to link to this one. (presse enter to skip and create a new one)")
             if warning_transaction == True:
                 print("Warning!!! some transaction does not have the same amount as statement_line!!!")
             
-            if len(open_transaction) == 1:
+            if len(open_transaction) == 1: # So far most of result when 1 result came out were the good one, and we did not had same amount, now with same amount we can use result if only 1 comes out.
                 transaction_choice = 1
             
             else:
@@ -929,9 +929,7 @@ class JournalEntry(Document):
             else:
                 selected_transaction = open_transaction[int(transaction_choice)-1]
                 selected_transaction.source_ref = statement_line # TODO: this should be integrated with the new reference many to many below.
-                # link1 = StatementLineToJournalEntry(statement_line=statement_line, journal_entry=)
-                # link1 = JournalEntryToTransaction(journal_entry=journal_entry, transaction=transaction)
-                # link1.save()
+
                 selected_transaction.save()
                 # TODO: need to add a parameter to show the line has been reconciled.
 
@@ -946,7 +944,7 @@ class JournalEntry(Document):
 
                 # print('line found')
 
-            except:
+            except DoesNotExist:
                 pass
                 # print('No JournalEntry exist on this line, creating new one.')
 
@@ -959,7 +957,7 @@ class JournalEntry(Document):
                     account1 = Account.get_account_by_number(int(statement_line.account_number))
                 else:
                     account1 = Account.get_account(int(statement_line.account_number), statement_line.account_type)
-            except:
+            except DoesNotExist:
                 print('account1 = ', account1)
                 print('this account does not exist! %s' %statement_line.account_number)
                 exit()
@@ -1061,16 +1059,17 @@ class JournalEntry(Document):
             # print('transaction2.user_amount = ', transaction2.user_amount)
             if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
                 ratio_choice = None
-                output_ratio = None
-                output_ratio = check_rules(new_journal_entry)
 
-                if output_ratio != None:
+                output_ratio = check_rules(new_journal_entry) # this is a preset rules for specific transactions, instead of asking every time
+
+                if output_ratio != None: 
                     ratio_choice = output_ratio[0]
 
                 else:
                     print('Output account has no ratio set, use parent ratio?')
                     print('Parent ratio: ', transaction1.account_number.user_ratio)
                     use_parent_ratio_choice = input('(y)/n >> ')
+
                     if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
                         transaction2.user_amount = transaction1.user_amount
                         transaction2.save()
