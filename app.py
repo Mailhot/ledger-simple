@@ -3,7 +3,7 @@ import datetime
 import helpers
 
 
-def import_chart_of_account(filename='./.data/ChartofAccounts.csv'):
+def import_chart_of_account(filename='./data/chartofaccount/ChartofAccounts.csv'):
     objects.Account.import_accounts_from_file(filename=filename)
 
 
@@ -53,24 +53,41 @@ def process_statement(id_, force=False):
 
 if __name__ == "__main__":
 
-    # objects.Counters.drop_collection()
+    objects.Counters.drop_collection()
 
-    # objects.init_counters()
+    objects.init_counters()
+
+    # objects.Account.drop_collection()
+    # import_chart_of_account()
+
+    objects.Statement.drop_collection()
+    objects.StatementLine.drop_collection()
+    objects.JournalEntry.drop_collection()
+    objects.Transaction.drop_collection()
     
-    base_folder = './.data'
+    base_folder = './data'
 
     if not objects.User.objects():
         objects.User.init_2_users()
 
+    # NOTES: we need to add a separate column for the reconciled accounts.
+    # these accounts will hold statement and will be reconciled between each other.
+    # So if a transactino is destined  to another account with a statement, 
+    # it needs to warn if there is not 2 statement lines linked to this transaction
+    # ccurrently the line 980 that was added does not work properly.
+    # transactions with same description should be held and dispatched later when another 
+    # match the exact amount at same date. if not then we ask the user.
 
+    # All data should be saved in files so that it does not get lost. (until database is reliable)
+
+    # 2020-10-06
+    # Need to add a step on recording transaction between 2 accounts that are 
+    # reconciled = y (just added)
+    # we can record the transaction as empty until we come accross the 2nd recording 
+    # we match the date and the amount with description, show result if more than 1
+    # 
     
-    # objects.Account.drop_collection()
-    # import_chart_of_account()
 
-    # objects.Statement.drop_collection()
-    # objects.StatementLine.drop_collection()
-    # objects.JournalEntry.drop_collection()
-    # objects.Transaction.drop_collection()
 
     user1 = objects.User.objects[0]
     user2 = objects.User.objects[1]
@@ -81,17 +98,17 @@ if __name__ == "__main__":
     #     print(object_.id_)
     
 
-    # statement1 = objects.Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',', True)
+    # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # # Process the accounts.
-    # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
-    # csv_files.sort()
-    # # csv_files_list = 
-    # for file in csv_files:
-    #     print(file)
-    #     statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', True)
-    #     process_statement(statement1.id_)
+    # Process the accounts.
+    csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    csv_files.sort()
+    # csv_files_list = 
+    for file in csv_files:
+        print(file)
+        statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
+        process_statement(statement1.id_)
 
     # # Add an account
     # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}
@@ -121,10 +138,12 @@ if __name__ == "__main__":
     # process_statement(20, force=True)
 
     
+    # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
+    # process_statement(statement1.id_)
 
 
 
-    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=9, day=25))
+    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
     #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))

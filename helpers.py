@@ -109,25 +109,29 @@ def choose_from_list(list_):
     if len(list_) > 1:
 
         item_number = 1
-        for item in list_:
 
+        for item in list_:
             print(item_number, item)
             item_number += 1
-        while True:
 
+        while True:
             item_choice = input('what item would you like to choose? [1]>> ')
+            
             if item_choice == '':
                 item_choice = 1
 
             try:
                 item_choice_int = int(item_choice)
+
             except ValueError:
                 print('%s is not a valid choice, try again.' %item_choice)
                 continue
 
-            return list_[item_choice_int]
+            return list_[item_choice_int-1]
+
     elif len(list_) == 1:
         return list_[0]
+    
     else:
         return None
 

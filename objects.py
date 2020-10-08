@@ -1,4 +1,3 @@
-
 from mongoengine import *
 from datetime import datetime
 from bson import ObjectId
@@ -10,6 +9,16 @@ default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
 connect('ledger-simple')
+
+# Exceptions are transaction that comes with same description but could go to different account.
+# they hare going to an account that we are reconciling also.
+
+
+EXCEPTIONS = [{'account_number': 213305,
+                'account_type': 'PCA',
+                'description': 'Transfer - AccesD - Internet', 
+                'others_accounts': [709733, 716528]
+                }]
 
 ACCOUNT_TYPE = {'BC': 'Bank and Cash',
             'FA': 'Fixed Assets',
@@ -824,15 +833,16 @@ class JournalEntry(Document):
     transactions = ListField(ReferenceField(Transaction))
 
     def header():
-        print("%6s %10s %15s %12s" %('id_', 'date', 'statement_line', 'transactions',))
+        print("%6s %10s %15s %10s %12s" %('id_', 'date', 'statement_line', 'amount' 'transactions',))
 
     def __str__(self):
         output_transaction_id = []
         if self.transactions:
             for transaction in self.transactions:
-                output_transaction_id.append(transaction.id_)
+                output_transaction_id.append('%s, %s' %(transaction.account_number.number, transaction.account_number.description))
+        amount = self.statement_line.credit + self.statement_line.debit + self.statement_line.interest + self.statement_line.advance + self.statement_line.reimbursement
 
-        return "%6s %10s %15s %12s" %(self.id_, self.date.date(), self.statement_line.id_, output_transaction_id,)
+        return "%6s %10s %15s %8.2f %12s" %(self.id_, self.date.date(), self.statement_line.description, amount, output_transaction_id,)
 
 
     def create_from_statement_line(statement_line_id_):
@@ -846,53 +856,70 @@ class JournalEntry(Document):
 
         # Step 1
         # Check if existing transaction are present, update source if yes.
+        # This actually happens when an inter account transaction is open (unreconciled)
         # print('statement_line.account_type=', statement_line.account_type)
         if statement_line.account_type is not None:
             try:
-                open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
-                                                            source_ref=None, 
-                                                            date=statement_line.date, 
-                                                            #credit=statement_line.debit, 
-                                                            #debit=statement_line.credit,
-                                                            ))
+              
+                statement_line_value = statement_line.credit + statement_line.debit
+                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$eq": Account.get_account(int(statement_line.account_number), statement_line.account_type).id}, "source_ref":{"$eq": None}, "date":{"$eq": statement_line.date}}}))
+                #
+                # open_transaction = list(Transaction.objects(account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                #                                             source_ref=None, 
+                #                                             date=statement_line.date, 
+                #                                             #credit=statement_line.debit, 
+                #                                             #debit=statement_line.credit,
+                #                                             ))
             except:
                 open_transaction = []
 
         elif statement_line.account_type == None:
             try:
-                open_transaction=list(Transaction.objects(number=Account.get_account_by_number(int(statement_line.account_number)),
-                                                            source_ref=None, 
-                                                            date=statement_line.date, 
-                                                            #credit=statement_line.debit, 
-                                                            #debit=statement_line.credit,
-                                                            ))
+                statement_line_value = statement_line.credit + statement_line.debit
+                # filter transaction based on total value
+                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$eq": Account.get_account(int(statement_line.account_number)).id}, "source_ref":{"$eq": None}, "date":{"$eq": statement_line.date}}}))
+
+            #     open_transaction=list(Transaction.objects(number=Account.get_account_by_number(int(statement_line.account_number)),
+            #                                                 source_ref=None, 
+            #                                                 date=statement_line.date, 
+            #                                                 #credit=statement_line.debit, 
+            #                                                 #debit=statement_line.credit,
+            #                                                 ))
             except:
                 open_transaction = []
 
         if len(open_transaction) > 0:
             statement_line_sum = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
-            # credit = FloatField(default=0)
-            # debit = FloatField(default=0)
-            # interest = FloatField(default=0)
-            # advance = FloatField(default=0)
-            # reimbursement = FloatField(default=0)
+            
 
             print('here are the open transaction that matches this one. ')
             i = 0
             warning_transaction = None
             Transaction.header()
+            transaction_document = []
             for transaction in open_transaction:
                 i += 1
+                # print('transaction =', transaction)
+                transaction = Transaction.objects.get(id=transaction['_id'])
+                transaction_document.append(transaction)
                 print(i, transaction)
                 transaction_sum = transaction.credit + transaction.debit
                 if transaction_sum != statement_line_sum:
                     warning_transaction = True
 
+            open_transaction = transaction_document # we need a list of doc not a dict as the aggregate gives us.
+
+
 
             print("Select which transaction you would like to link to this one. (presse enter to skip and create a new one)")
             if warning_transaction == True:
                 print("Warning!!! some transaction does not have the same amount as statement_line!!!")
-            transaction_choice = input(">> ")
+            
+            if len(open_transaction) == 1:
+                transaction_choice = 1
+            
+            else:
+                transaction_choice = input(">> ")
 
             if transaction_choice == '':
                 print('transaction skipped')
@@ -958,11 +985,26 @@ class JournalEntry(Document):
                                                             ))
 
             # print('past_statement_line = ', past_statement_line)
-
+            exception_found = False
+            if len(past_statement_line) > 0:
+                for exception in EXCEPTIONS:
+                    if exception['description'] == statement_line.description:
+                        if exception['account_number'] == statement_line.account_number:
+                            past_statement_line.append(list(StatementLine.objects(account_number__in=exception['others_accounts'],
+                                                                account_type=exception['account_type'],
+                                                                description=exception['description'],
+                                                                id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
+                                                                )))
+                            # print('past statement_line appened!')
+                            # print(past_statement_line)
+                            print('exception_found == True')
+                            exception_found = True
+                            break
 
             print('statement_line destination account = ', statement_line.destination_account)
-            if statement_line.destination_account not in [None, 0]:
+            if statement_line.destination_account not in ['', None, 0]:
                 result_account = Account.objects.get(number=statement_line.destination_account)
+            
             elif len(past_statement_line) > 0:
                 # TODO: Would need to find the most recent past_statement_line to be able to have proper account if modification were made.
                 # Until we get the most recent, we use the last one.
@@ -971,7 +1013,13 @@ class JournalEntry(Document):
 
                 # Find the journal entry with this line (assuming it exist)
                 # TODO: what if it does not exist?
-                past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
+                if exception_found == False:
+                    print(past_statement_line)
+                    past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
+                else:
+                    print('extended past statement line!!')
+                    past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=selected_past_statement_line)))
+
                 past_output_transaction = past_journal_entry.transactions[-1]
                 Account.header()
                 # print(past_output_transaction.account_number)
@@ -1010,7 +1058,7 @@ class JournalEntry(Document):
             #################################
             # Check ratios
             # TODO: this would need a function to itself.
-            print('transaction2.user_amount = ', transaction2.user_amount)
+            # print('transaction2.user_amount = ', transaction2.user_amount)
             if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
                 ratio_choice = None
                 output_ratio = None
