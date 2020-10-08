@@ -57,8 +57,8 @@ if __name__ == "__main__":
 
     objects.init_counters()
 
-    # objects.Account.drop_collection()
-    # import_chart_of_account()
+    objects.Account.drop_collection()
+    import_chart_of_account()
 
     objects.Statement.drop_collection()
     objects.StatementLine.drop_collection()
@@ -109,6 +109,7 @@ if __name__ == "__main__":
         print(file)
         statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
         process_statement(statement1.id_)
+        objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
     # # Add an account
     # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}

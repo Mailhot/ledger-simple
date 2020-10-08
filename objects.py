@@ -103,6 +103,7 @@ class Account(Document):
     user_ratio = DictField(default=None) # Needs testing, should be a dict
     account_number = IntField(default=None)
     account_type = StringField(max_length=3)
+    reconciled = BooleanField(default=False)
 
     def header():
         return "%6s %40s %5s %12s %14s %12s" %('number', 'description', 'type_', 'user_ratio', 
@@ -114,7 +115,7 @@ class Account(Document):
 
 
 
-    def add_account(number, parent_account, child_account, description, type_, user_ratio, account_number=None, account_type=None):
+    def add_account(number, parent_account, child_account, description, type_, user_ratio, account_number=None, account_type=None, reconciled=False):
         new_account = Account(number=number, 
                             parent_account=parent_account,
                             child_account=child_account,
@@ -123,6 +124,7 @@ class Account(Document):
                             user_ratio=user_ratio,
                             account_number=account_number, 
                             account_type=account_type,
+                            reconciled=reconciled
                             )
         new_account.save()
         print(new_account.id)
@@ -170,6 +172,12 @@ class Account(Document):
                         account_type = None
                         account_number = None
 
+                    #facultative reconciled parameter
+                    if row[7] in ['TRUE', 'True', 'y', 'Y']:
+                        reconciled_found = True
+                    else:
+                        reconciled_found = False
+
                     dict_values = list(ACCOUNT_TYPE.values()).index(row[4])
                     print("dict_values = ", dict_values)
                     dict_keys = list(ACCOUNT_TYPE.keys())
@@ -181,6 +189,7 @@ class Account(Document):
                                                     user_ratio=user_ratio,
                                                     account_number=account_number, 
                                                     account_type=account_type,
+                                                    reconciled=reconciled_found
                                                     )
                     new_account.save()
                     
@@ -476,6 +485,7 @@ class StatementLine(Document): #
     balance = FloatField(default=0)
     statement = ReferenceField(Statement)
     destination_account = IntField(default=None)
+    reconciled = BooleanField(default=False)
     #journal_entry = ReferenceField(JournalEntry, default=None)
     def header():
         print("%4s %10s %8s %3s %4s %30s %6s %6s %6s %6s %6s %6s" %('id_', 'date', 'account_number', 'account_type', 'line_number', 'description',
@@ -510,7 +520,7 @@ class StatementLine(Document): #
 
 
 
-    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=0):
+    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=0, reconciled=False):
         
         if destination_account == None or destination_account == '':
             destination_account = 0
@@ -530,6 +540,7 @@ class StatementLine(Document): #
                                         balance=balance,
                                         statement=statement,
                                         destination_account=destination_account,
+                                        reconciled=reconciled
                                         )
         new_statement_line.save()
         return new_statement_line
@@ -938,9 +949,9 @@ class JournalEntry(Document):
 
         if len(open_transaction) == 0: # No transaction matches this statement line, so we create a new one.
 
-            try: #TODO: if this fail for other reason than no result found, we wont see the error!
-                #existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
-                existing_journal_entry = StatementLineToJournalEntry.objects.get(statement_line=statement_line)
+            try: 
+                existing_journal_entry = JournalEntry.objects.get(statement_line=statement_line)
+                # existing_journal_entry = StatementLineToJournalEntry.objects.get(statement_line=statement_line)
 
                 # print('line found')
 
@@ -976,30 +987,42 @@ class JournalEntry(Document):
 
             # add second Transaction from the found destination account in past journal entry.
             # But first check if past statement line were threated, if yes we will use the same account output.
-            past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
-                                                            account_type=statement_line.account_type,
-                                                            description=statement_line.description,
-                                                            id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
-                                                            ))
+            # past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
+            #                                                 account_type=statement_line.account_type,
+            #                                                 description=statement_line.description,
+            #                                                 id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
+            #                                                 ))
+
+            statement_line_value = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
+            past_statement_line = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": statement_line.account_number}, "source_ref":{"$eq": None}, "date":{"$eq": statement_line.date}, "id":{"$lt": statement_line.id}}}))
+            print('len past statement_line =', len(past_statement_line))
+
+            if len(past_statement_line) == 0 and statement_line.reconciled == True:
+                return None # exit if there should be a line to reconciled, we will add it later when we find the 2nd entry.
 
             # print('past_statement_line = ', past_statement_line)
-            exception_found = False
-            if len(past_statement_line) > 0:
-                for exception in EXCEPTIONS:
-                    if exception['description'] == statement_line.description:
-                        if exception['account_number'] == statement_line.account_number:
-                            past_statement_line.append(list(StatementLine.objects(account_number__in=exception['others_accounts'],
-                                                                account_type=exception['account_type'],
-                                                                description=exception['description'],
-                                                                id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
-                                                                )))
-                            # print('past statement_line appened!')
-                            # print(past_statement_line)
-                            print('exception_found == True')
-                            exception_found = True
-                            break
+
+            # HERE WE ARE
+            # we should always look into all possible account for past statement line
+            # exception_found = False
+            # if len(past_statement_line) > 0:
+            #     for exception in EXCEPTIONS:
+            #         if exception['description'] == statement_line.description:
+            #             if exception['account_number'] == statement_line.account_number:
+            #                 past_statement_line.append(list(StatementLine.objects(account_number__in=exception['others_accounts'],
+            #                                                     account_type=exception['account_type'],
+            #                                                     description=exception['description'],
+            #                                                     id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
+            #                                                     )))
+            #                 # print('past statement_line appened!')
+            #                 # print(past_statement_line)
+            #                 print('exception_found == True')
+            #                 exception_found = True
+            #                 break
+
 
             print('statement_line destination account = ', statement_line.destination_account)
+
             if statement_line.destination_account not in ['', None, 0]:
                 result_account = Account.objects.get(number=statement_line.destination_account)
             
@@ -1011,12 +1034,12 @@ class JournalEntry(Document):
 
                 # Find the journal entry with this line (assuming it exist)
                 # TODO: what if it does not exist?
-                if exception_found == False:
-                    print(past_statement_line)
-                    past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
-                else:
-                    print('extended past statement line!!')
-                    past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=selected_past_statement_line)))
+                # if exception_found == False:
+                #     print(past_statement_line)
+                #     past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
+                # else:
+                # print('extended past statement line!!')
+                past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=past_statement_line)))
 
                 past_output_transaction = past_journal_entry.transactions[-1]
                 Account.header()
