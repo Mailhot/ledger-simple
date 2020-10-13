@@ -47,8 +47,8 @@ def statement_line_group_money_transfer(statement_line):
     interest = 0
 
     money_transfer = dict()
-    money_transfer['debit'] = statement_line.debit
     money_transfer['credit'] = statement_line.credit
+    money_transfer['debit'] = statement_line.debit
     money_transfer['interest'] = statement_line.interest
     money_transfer['advance'] = statement_line.advance
     money_transfer['reimbursement'] = statement_line.reimbursement
@@ -59,25 +59,25 @@ def statement_line_group_money_transfer(statement_line):
 
             values_keys.append(key)
 
-    if len(values_keys) == 1:
-        if values_keys[0] in ['debit', 'credit']:
-            credit = statement_line.credit
-            debit = statement_line.debit
+    # if len(values_keys) == 1:
+    if values_keys[0] in ['debit', 'credit']:
+        credit += statement_line.credit
+        debit += statement_line.debit
 
-        elif values_keys[0] in ['advance', 'reimbursement']:
-            credit = statement_line.reimbursement
-            debit = statement_line.advance
+    if values_keys[0] in ['advance', 'reimbursement']:
+        credit += statement_line.reimbursement
+        debit += statement_line.advance
 
-        elif values_keys[0] in ['interest']:
-            # This is an interes payment only, no effect on account amount. 
-            credit = statement_line.interest
-            debit = 0
-            interest = statement_line.interest
-
-    elif len(values_keys) > 1: # this should be an interest/ reimbursement combination of an automated payement.
-        credit = statement_line.reimbursement + statement_line.interest
-        debit = 0
+    if values_keys[0] in ['interest']:
+        # This is an interes payment only, no effect on account amount. 
+        credit += 0
+        debit += statement_line.interest
         interest = statement_line.interest
+
+    # elif len(values_keys) > 1: # this should be an interest/ reimbursement combination of an automated payement.
+    #     credit = statement_line.reimbursement + statement_line.interest
+    #     debit = 0
+    #     interest = statement_line.interest
 
     return credit, debit, interest
 
@@ -139,4 +139,4 @@ def choose_from_list(list_):
 
 def find_csv_filenames( path_to_dir, suffix=".csv" ):
     filenames = listdir(path_to_dir)
-    return [ filename for filename in filenames if filename.endswith( suffix ) ]
+    return [ filename for filename in filenames if filename.endswith( suffix ) ] 

@@ -617,6 +617,21 @@ class Transaction(Document):
 
         return new_transaction
 
+    def create_reverse_transaction(transaction):
+        # create a new transaction with all the same thing except the credit and debit are reversed
+        new_transaction = Transaction(id_=getNextSequenceValue('TransactionId'), 
+                                    date=transaction.date,
+                                    account_number=transaction.account_number,
+                                    credit=transaction.debit,
+                                    debit=transaction.credit,
+                                    source=transaction.source,
+                                    source_ref=transaction.source_ref,
+                                    user_amount=transaction.user_amount,
+                                    )
+        new_transaction.save()
+
+        return new_transaction
+
 
 class reports():
     """Basid class for standard GAAP reports:
@@ -911,7 +926,7 @@ class JournalEntry(Document):
               
                 statement_line_value = statement_line.credit + statement_line.debit
                 open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-                # print(open_transaction)
+                print(open_transaction)
                 
             except DoesNotExist:
                 open_transaction = []
@@ -970,8 +985,10 @@ class JournalEntry(Document):
                 selected_transaction = open_transaction[int(transaction_choice)-1]
                 # print(selected_transaction)
                 print(selected_transaction.source_ref)
-                journal_entry1 = JournalEntry.objects().get(transactions__contains=selected_transaction)
-                journal_entry1.transactions.append(transaction1)
+                journal_entry1 = list(JournalEntry.objects(transactions__contains=selected_transaction))[-1]
+                # journal_entry1.transactions.append(transaction1)
+                journal_entry1.transactions[1].source_ref = statement_line
+                journal_entry1.transactions[1].save()
                 journal_entry1.save()
 
                 new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
@@ -979,7 +996,12 @@ class JournalEntry(Document):
                                             statement_line=statement_line,
                                             )
                 new_journal_entry.transactions.append(transaction1)
-                new_journal_entry.transactions.append(selected_transaction)
+                print('selelcted transaction = ', selected_transaction)
+                reverse_transaction = Transaction.create_reverse_transaction(selected_transaction)
+                reverse_transaction.source_ref = journal_entry1.transactions[0].source_ref
+                reverse_transaction.save()
+
+                new_journal_entry.transactions.append(reverse_transaction)
                 new_journal_entry.save()
 
 
@@ -1011,10 +1033,9 @@ class JournalEntry(Document):
         if len(open_transaction) == 0: 
 
 
-            statement_line_value = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
-            past_statement_line = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "description":{"$eq": statement_line.description}, "account_number":{"$ne": statement_line.account_number}, "date":{"$eq": statement_line.date}, "id":{"$lt": statement_line.id}}}))
+            # statement_line_value = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
+            # past_statement_line = list(StatementLine.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "description":{"$eq": statement_line.description}, "account_number":{"$eq": statement_line.account_number}, "id":{"$lt": statement_line.id}}}))
             
-            print('len past statement_line =', len(past_statement_line))
 
             # print('past_statement_line = ', past_statement_line)
 
@@ -1025,11 +1046,14 @@ class JournalEntry(Document):
             #     for exception in EXCEPTIONS:
             #         if exception['description'] == statement_line.description:
             #             if exception['account_number'] == statement_line.account_number:
-            #                 past_statement_line.append(list(StatementLine.objects(account_number__in=exception['others_accounts'],
-            #                                                     account_type=exception['account_type'],
-            #                                                     description=exception['description'],
-            #                                                     id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
-            #                                                     )))
+            past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
+                                                account_type=statement_line.account_type,
+                                                description=statement_line.description,
+                                                id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
+                                                ))
+
+            print('len past statement_line =', len(past_statement_line))
+
             #                 # print('past statement_line appened!')
             #                 # print(past_statement_line)
             #                 print('exception_found == True')
@@ -1055,9 +1079,9 @@ class JournalEntry(Document):
                 #     past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
                 # else:
                 # print('extended past statement line!!')
-                past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=past_statement_line)))
-
-                past_output_transaction = past_journal_entry.transactions[-1]
+                # past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=past_statement_line)))
+                past_journal_entry = list(JournalEntry.objects(statement_line__in=past_statement_line))
+                past_output_transaction = past_journal_entry[-1].transactions[-1]
                 Account.header()
                 # print(past_output_transaction.account_number)
 
@@ -1073,8 +1097,10 @@ class JournalEntry(Document):
 
             transaction2 = Transaction.add_transaction(date=statement_line.date,
                                                         account_number=result_account,
-                                                        credit=statement_line_debit,
-                                                        debit=statement_line_credit, 
+                                                        #credit=statement_line_debit,
+                                                        credit=transaction1.debit,
+                                                        #debit=statement_line_credit, 
+                                                        debit=transaction1.credit,
                                                         source=None, 
                                                         source_ref=None,
                                                         )
