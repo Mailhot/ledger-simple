@@ -914,6 +914,7 @@ class JournalEntry(Document):
                                                     source=None, 
                                                     source_ref=statement_line,
                                                     )
+        
         transaction1.save()
 
 
