@@ -412,11 +412,18 @@ class Statement(Document):
                         else:
                             destination_account = None
 
+                        # check for description with amount, remove amount as it would wrongly not find accounts afterwards.
+                        if '$' in line[5]:
+                            description_list = line[5].split(':')
+                            split_description = description_list[0]
+                        else:
+                            split_description = line[5]
+
                         new_line = StatementLine.create_line(date=line[3],
                                                             account_number=line[1],
                                                             account_type=line[2],
                                                             line_number=line[4],
-                                                            description=line[5],
+                                                            description=split_description,
                                                             credit=StatementLine.to_float_or_zero(line[7]),
                                                             debit=StatementLine.to_float_or_zero(line[8]),
                                                             interest=StatementLine.to_float_or_zero(line[9]),
@@ -923,10 +930,20 @@ class JournalEntry(Document):
         # This actually happens when an inter account transaction is open (unreconciled)
         # print('statement_line.account_type=', statement_line.account_type)
         if statement_line.account_type is not None:
+
             try:
-              
+
+                credit = 0
+                debit = 0
+
+                # we look for an opposite transaction value than this one.
+                credit += statement_line.debit
+                debit += statement_line.credit
+
                 statement_line_value = statement_line.credit + statement_line.debit
-                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+
+                # open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+                open_transaction = list(Transaction.objects().aggregate({"$match": {"credit":{"$eq": credit}, "debit":{"$eq":debit}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
                 print(open_transaction)
                 
             except DoesNotExist:
@@ -996,9 +1013,11 @@ class JournalEntry(Document):
                                             date=statement_line.date,
                                             statement_line=statement_line,
                                             )
+
                 new_journal_entry.transactions.append(transaction1)
                 print('selelcted transaction = ', selected_transaction)
-                reverse_transaction = Transaction.create_reverse_transaction(selected_transaction)
+                # reverse_transaction = Transaction.create_reverse_transaction(selected_transaction)
+                reverse_transaction = selected_transaction
                 reverse_transaction.source_ref = journal_entry1.transactions[0].source_ref
                 reverse_transaction.save()
 

@@ -65,8 +65,8 @@ def statement_line_group_money_transfer(statement_line):
         debit += statement_line.debit
 
     if values_keys[0] in ['advance', 'reimbursement']:
-        credit += statement_line.reimbursement
-        debit += statement_line.advance
+        credit += statement_line.advance
+        debit += statement_line.reimbursement
 
     if values_keys[0] in ['interest']:
         # This is an interes payment only, no effect on account amount. 
