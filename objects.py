@@ -1029,12 +1029,17 @@ class JournalEntry(Document):
                 open_transaction = []
                 pass
 
-            else:
+            else: # Transactoin choice is 1 so we select it by default
                 selected_transaction = open_transaction[int(transaction_choice)-1]
-                # print(selected_transaction)
+                print('selected transaction = ', selected_transaction)
                 print(selected_transaction.source_ref)
-                journal_entry1 = list(JournalEntry.objects(transactions__contains=selected_transaction))[-1]
-                # journal_entry1.transactions.append(transaction1)
+                journal_entry_from_transaction = list(JournalEntry.objects(statement_line=selected_transaction.source_ref))
+                print('journal_entry from transaction = ')
+                print(journal_entry_from_transaction)
+                journal_entry1 = journal_entry_from_transaction[-1]
+
+                # journal_entry1 = selected_transaction.source_ref
+                journal_entry1.transactions.append(transaction1)
                 journal_entry1.transactions[1].source_ref = statement_line
                 journal_entry1.transactions[1].save()
                 journal_entry1.save()
@@ -1083,19 +1088,7 @@ class JournalEntry(Document):
         if len(open_transaction) == 0: 
 
 
-            # statement_line_value = statement_line.credit + statement_line.debit + statement_line.interest + statement_line.advance + statement_line.reimbursement
-            # past_statement_line = list(StatementLine.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit"]}}}, {"$match": {"total":{"$eq": statement_line_value}, "description":{"$eq": statement_line.description}, "account_number":{"$eq": statement_line.account_number}, "id":{"$lt": statement_line.id}}}))
             
-
-            # print('past_statement_line = ', past_statement_line)
-
-            # HERE WE ARE
-            # we should always look into all possible account for past statement line
-            # exception_found = False
-            # if len(past_statement_line) > 0:
-            #     for exception in EXCEPTIONS:
-            #         if exception['description'] == statement_line.description:
-            #             if exception['account_number'] == statement_line.account_number:
             past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
                                                 account_type=statement_line.account_type,
                                                 description=statement_line.description,
@@ -1144,6 +1137,18 @@ class JournalEntry(Document):
                 
             else:
                 result_account = helpers.choose_account()
+
+
+            if result_account.reconciled == True and account1.reconciled == True:
+                # this transaction should be reconciled at some point, we did not find it this time, but should when threating the other side of transaction.
+                new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
+                                            date=statement_line.date,
+                                            statement_line=statement_line,
+                                            )
+
+                new_journal_entry.transactions.append(transaction1)
+                new_journal_entry.save()
+                return 'ok' # we assume we will find the corresponding transaction at some other point.
 
             transaction2 = Transaction.add_transaction(date=statement_line.date,
                                                         account_number=result_account,

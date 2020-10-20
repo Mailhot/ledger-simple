@@ -54,22 +54,22 @@ def process_journal_entry(id_, force=False):
         if len(journalentry.transactions) > 2:
             continue
         
-        if journalentry.transactions[0].acount_number in 
+        # if journalentry.transactions[0].acount_number in 
 
 
 if __name__ == "__main__":
 
-    # objects.Counters.drop_collection()
+    objects.Counters.drop_collection()
 
-    # objects.init_counters()
+    objects.init_counters()
 
     # objects.Account.drop_collection()
     # import_chart_of_account()
 
-    # objects.Statement.drop_collection()
-    # objects.StatementLine.drop_collection()
-    # objects.JournalEntry.drop_collection()
-    # objects.Transaction.drop_collection()
+    objects.Statement.drop_collection()
+    objects.StatementLine.drop_collection()
+    objects.JournalEntry.drop_collection()
+    objects.Transaction.drop_collection()
     
     base_folder = './data'
 
@@ -107,15 +107,14 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # # Process the accounts.
-    # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
-    # csv_files.sort()
-    # # csv_files_list = 
-    # for file in csv_files:
-    #     print(file)
-    #     statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
-    #     process_statement(statement1.id_)
-    #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
+    # Process the accounts.
+    csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    csv_files.sort()
+    for file in csv_files:
+        print(file)
+        statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
+        process_statement(statement1.id_)
+        objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
     # # Add an account
     # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}
@@ -133,18 +132,17 @@ if __name__ == "__main__":
 
 
 
-    # # process the credit card bills
-    # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
-    # txt_files.sort()
-    # for file in txt_files:
-    #     print(file)
-    #     statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
-    #     process_statement(statement1.id_)
+    # process the credit card bills
+    txt_files = helpers.find_csv_filenames(base_folder, ".txt")
+    txt_files.sort()
+    for file in txt_files:
+        print(file)
+        statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
+        process_statement(statement1.id_)
     
     # objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
     # process_statement(20, force=True)
 
-    
     # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
     # process_statement(statement1.id_)
 
