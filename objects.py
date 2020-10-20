@@ -729,6 +729,8 @@ class reports():
             #print(type(account_.number))
             report_section[account_.number] = {}
             report_section[account_.number]['total'] = 0
+            report_section[account_.number]['credit'] = 0
+            report_section[account_.number]['debit'] = 0
 
         for user in list(User.objects()):
             for section in report_section.keys():
@@ -741,13 +743,16 @@ class reports():
             print('journal_entry = ', journal_entry)
             for transaction in journal_entry.transactions:
                 # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
+                debit = False
+                
                 if transaction.credit == 0:
                     debit = True
                     report_section[transaction.account_number.number]['total'] += transaction.debit
+                    report_section[transaction.account_number.number]['debit'] += transaction.debit
+                
                 else:
-                    debit = False
                     report_section[transaction.account_number.number]['total'] -= transaction.credit
-
+                    report_section[transaction.account_number.number]['credit'] += transaction.credit
                 
                 print(transaction)
                 for user in list(User.objects()):
@@ -759,7 +764,7 @@ class reports():
                             report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
         
         #print(report_section)
-        print('%12s   %-40s  %10s  %10s  %10s' %('section', 'description', 'total', 'user1', 'user2'))
+        print('%12s   %-40s  %10s %10s %10s  %15s  %10s' %('section', 'description', 'total', 'credit', 'debit', 'user1', 'user2'))
         for report_section_key in report_section.keys():
             #print(report_section_key)
             line_value = []
@@ -773,7 +778,7 @@ class reports():
                 continue
             else:
                 account_class = Account.get_account_by_number(number=report_section_key)
-                print('%12s   %-40s  %10.2f  %10.2f  %10.2f' %(report_section_key, account_class.description, line_value[0], line_value[1], line_value[2]))
+                print('%12s   %-40s  %10.2f %10.2f %10.2f  %15.2f  %10.2f' %(report_section_key, account_class.description, line_value[0], line_value[1], line_value[2], line_value[3], line_value[4]))
 
 
     def balance_sheet(date):
@@ -858,6 +863,31 @@ class reports():
             for key_ in imbalance_journal_entry.keys():
                 journal_entry1 = JournalEntry.objects.get(id_=key_)
                 print(journal_entry1.id_, str(journal_entry1.statement_line.date)[:-9], journal_entry1.statement_line.account_number, journal_entry1.statement_line.description, imbalance_journal_entry[key_][user.id_])
+
+    def account_recap(account_number, date_from, date_to):
+        journal_entry_list =  list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
+        account_class = Account.get_account_by_number(account_number)
+        Transaction.header()
+        credit = 0
+        debit = 0
+        for journal_entry in journal_entry_list:
+            if journal_entry.transactions[0].account_number == account_class:
+                transaction = journal_entry.transactions[0]
+                print(transaction)
+                credit += transaction.credit
+                debit += transaction.debit
+            # for transaction in journal_entry.transactions:
+
+            #     if transaction.account_number == account_class and i == 0:
+            #         print(transaction)
+            #         credit += transaction.credit
+            #         debit += transaction.debit
+            #         i += 1
+
+        print('credit %s debit %s' %(credit, debit))
+
+
+
 
 class JournalEntry(Document):
     id_ = IntField(required=True)
@@ -944,7 +974,7 @@ class JournalEntry(Document):
 
                 # open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
                 open_transaction = list(Transaction.objects().aggregate({"$match": {"credit":{"$eq": credit}, "debit":{"$eq":debit}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-                print(open_transaction)
+                # print(open_transaction)
                 
             except DoesNotExist:
                 open_transaction = []
@@ -954,7 +984,7 @@ class JournalEntry(Document):
                 statement_line_value = statement_line.credit + statement_line.debit
                 # filter transaction based on total value
                 # Open transaction are same sum, reconciled account with same amount.
-                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", "$interest", "$advance", "$reimbursement", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type)}, "account_number":{"$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", "$interest", "$advance", "$reimbursement", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type), "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
             
             except DoesNotExist:
                 open_transaction = []
@@ -1034,7 +1064,7 @@ class JournalEntry(Document):
 
 
                 # TODO: need to add a parameter to show the line has been reconciled.
-# print('past_statement_line = ', past_statement_line)
+            # print('past_statement_line = ', past_statement_line)
 
             # HERE WE ARE
             # we should always look into all possible account for past statement line

@@ -49,21 +49,27 @@ def process_statement(id_, force=False):
 
             objects.JournalEntry.create_from_statement_line(line1.id_)
 
+def process_journal_entry(id_, force=False):
+    for journalentry in objects.JournalEntry.objects():
+        if len(journalentry.transactions) > 2:
+            continue
+        
+        if journalentry.transactions[0].acount_number in 
 
 
 if __name__ == "__main__":
 
-    objects.Counters.drop_collection()
+    # objects.Counters.drop_collection()
 
-    objects.init_counters()
+    # objects.init_counters()
 
-    objects.Account.drop_collection()
-    import_chart_of_account()
+    # objects.Account.drop_collection()
+    # import_chart_of_account()
 
-    objects.Statement.drop_collection()
-    objects.StatementLine.drop_collection()
-    objects.JournalEntry.drop_collection()
-    objects.Transaction.drop_collection()
+    # objects.Statement.drop_collection()
+    # objects.StatementLine.drop_collection()
+    # objects.JournalEntry.drop_collection()
+    # objects.Transaction.drop_collection()
     
     base_folder = './data'
 
@@ -101,15 +107,15 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # Process the accounts.
-    csv_files = helpers.find_csv_filenames(base_folder, ".csv")
-    csv_files.sort()
-    # csv_files_list = 
-    for file in csv_files:
-        print(file)
-        statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
-        process_statement(statement1.id_)
-        objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
+    # # Process the accounts.
+    # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    # csv_files.sort()
+    # # csv_files_list = 
+    # for file in csv_files:
+    #     print(file)
+    #     statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
+    #     process_statement(statement1.id_)
+    #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
     # # Add an account
     # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}
@@ -144,9 +150,10 @@ if __name__ == "__main__":
 
 
 
-    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
+    # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
 
-    #objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    #objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    
+    # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+
     
