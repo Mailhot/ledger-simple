@@ -8,7 +8,7 @@ import helpers
 default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
-connect('ledger-simple-test')
+connect('ledger-simple')
 
 # Exceptions are transaction that comes with same description but could go to different account.
 # they hare going to an account that we are reconciling also.
@@ -750,7 +750,7 @@ class reports():
                     if transaction.source_ref.id_ != journal_entry.id_: # TODO: this is dodgy, it assume the journal entry has the same id as the statement line entry always
                         continue
 
-                        
+
                 # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
                 debit = False
                 

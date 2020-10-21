@@ -50,6 +50,7 @@ def process_statement(id_, force=False):
 
             objects.JournalEntry.create_from_statement_line(line1.id_)
 
+
 def process_journal_entry(id_, force=False):
     for journalentry in objects.JournalEntry.objects():
         if len(journalentry.transactions) > 2:
@@ -122,19 +123,6 @@ if __name__ == "__main__":
     #     process_statement(statement1.id_)
     #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
-    # # Add an account
-    # user_ratio = {str(user1.id_): 0, str(user2.id_): float(1)/100}
-
-    # new_account = objects.Account.add_account(number=111102,
-    #                                         parent_account=None,
-    #                                         child_account=None, 
-    #                                         description='CASH Joanie',
-    #                                         type_='BC',
-    #                                         user_ratio=user_ratio,
-    #                                         account_number=None, 
-    #                                         account_type=None,
-    #                                         )
-    # new_account.save()
 
 
 
