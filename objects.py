@@ -8,7 +8,7 @@ import helpers
 default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
-connect('ledger-simple')
+connect('ledger-simple-test')
 
 # Exceptions are transaction that comes with same description but could go to different account.
 # they hare going to an account that we are reconciling also.
@@ -112,7 +112,6 @@ class Account(Document):
     def __str__(self):
         return "%6s %40s %5s %12s %14s %12s" %(self.number, self.description, self.type_, self.user_ratio, self.account_number,
                                                                      self.account_type)
-
 
 
     def add_account(number, parent_account, child_account, description, type_, user_ratio, account_number=None, account_type=None, reconciled=False):
@@ -959,37 +958,31 @@ class JournalEntry(Document):
         # Check if existing transaction are present, update source if yes.
         # This actually happens when an inter account transaction is open (unreconciled)
         # print('statement_line.account_type=', statement_line.account_type)
-        if statement_line.account_type is not None:
+        # if statement_line.account_type is not None:
 
-            try:
+        #     try:
 
-                credit = 0
-                debit = 0
+        #         # statement_line_value = statement_line.credit + statement_line.debit
 
-                # we look for an opposite transaction value than this one.
-                credit += statement_line.debit
-                debit += statement_line.credit
-
-                statement_line_value = statement_line.credit + statement_line.debit
-
-                # open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-                open_transaction = list(Transaction.objects().aggregate({"$match": {"credit":{"$eq": credit}, "debit":{"$eq":debit}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-                # print(open_transaction)
+        #         # open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+        #         open_transaction = list(Transaction.objects().aggregate({"$match": {"credit":{"$eq": transaction1.debit}, "debit":{"$eq":transaction1.credit}, "account_number":{"$ne": transaction1.account_number.id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+        #         # print(open_transaction)
                 
-            except DoesNotExist:
-                open_transaction = []
+        #     except DoesNotExist:
+        #         open_transaction = []
 
-        elif statement_line.account_type == None:
-            try:
-                statement_line_value = statement_line.credit + statement_line.debit
-                # filter transaction based on total value
-                # Open transaction are same sum, reconciled account with same amount.
-                open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", "$interest", "$advance", "$reimbursement", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type), "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-            
-            except DoesNotExist:
-                open_transaction = []
+        # elif statement_line.account_type == None:
+        try:
+            # statement_line_value = statement_line.credit + statement_line.debit
+            # filter transaction based on total value
+            # Open transaction are same sum, reconciled account with same amount.
+            # open_transaction = list(Transaction.objects().aggregate({"$match": {"cedit":{"$eq": transaction1.debit}, "debit":{"$eq": transaction1.credit}, "account_number":{"$ne": transaction1.account_number.id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
+            open_transaction = list(Transaction.objects(credit=transaction1.debit, debit=transaction1.credit, account_number__ne=transaction1.account_number.id, account_number__in=[account.id for account in list(Account.objects(reconciled=True))], date=transaction1.date))
+        
+        except DoesNotExist:
+            open_transaction = []
 
-
+        print('len open transaction = ', len(open_transaction))
 
         if len(open_transaction) > 0:
             # TODO: this can be removed as we now get transaction with same price with the aggregate function
@@ -1004,14 +997,14 @@ class JournalEntry(Document):
             for transaction in open_transaction:
                 i += 1
                 # print('transaction =', transaction)
-                transaction = Transaction.objects.get(id=transaction['_id']) # we need to keep this as it transform open_transaction from a list of dict to list of documents
-                transaction_document.append(transaction)
+                # transaction = Transaction.objects.get(id=transaction['_id']) # we need to keep this as it transform open_transaction from a list of dict to list of documents
+                # transaction_document.append(transaction)
                 print(i, transaction)
                 # transaction_sum = transaction.credit + transaction.debit
                 # if transaction_sum != statement_line_sum:
                 #     warning_transaction = True
 
-            open_transaction = transaction_document # we need a list of doc not a dict as the aggregate gives us.
+            # open_transaction = transaction_document # we need a list of doc not a dict as the aggregate gives us.
 
 
             print("Select which transaction you would like to link to this one. (presse enter to skip and create a new one)")
@@ -1061,6 +1054,37 @@ class JournalEntry(Document):
 
 
                 print('journal entry added to existing one')
+
+                # Now that the 2 transaction have been saved, manage the interest
+                if statement_line_interest != 0 or statement_line.interest != 0:
+
+                    # add 2 transaction to the journal entry to add interest expense to the entry.
+                    # the interest expense were previously entered as credit to the account.
+                    transaction3 = Transaction.add_transaction(date=statement_line.date,
+                                account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                                credit=statement_line.interest,
+                                debit=0, 
+                                source=None, 
+                                source_ref=statement_line,
+                                )
+
+                    transaction3.save()
+
+                    transaction4 = Transaction.add_transaction(date=statement_line.date,
+                                account_number=Account.objects.get(number=513010),
+                                credit=0,
+                                debit=statement_line.interest, 
+                                source=None, 
+                                source_ref=statement_line,
+                                )
+
+                    transaction4.save()
+                    new_journal_entry.transactions.append(transaction3)
+                    new_journal_entry.transactions.append(transaction4)
+                    transaction4.user_amount = transaction3.user_amount # take the parent ratio as the interest expense ratio.
+                    transaction4.save()
+                    new_journal_entry.save()
+
 
                 return 'ok'
 
@@ -1209,6 +1233,9 @@ class JournalEntry(Document):
             #     transaction2.user_amount = transaction1.user_amount # take user amount from to affect to account.
             #     transaction2.save()
 
+
+
+        # this code is doubled at line 1058
         # Now that the 2 transaction have been saved, manage the interest
         if statement_line_interest != 0 or statement_line.interest != 0:
 
