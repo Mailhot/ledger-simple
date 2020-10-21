@@ -741,10 +741,20 @@ class reports():
         for journal_entry in journal_entry_filtered:
             print('journal_entry = ', journal_entry)
             for transaction in journal_entry.transactions:
+                
+                print(transaction)
+
+                # We do not count the transaction if it is reconciled from another transaction. The transaction will be taken care of in it's own journal entry.
+                # These reconciled transaction appears at 2 places even if they are the same transaction line. We need to make sure we dont count them twice.
+                if transaction.source_ref != None:
+                    if transaction.source_ref.id_ != journal_entry.id_: # TODO: this is dodgy, it assume the journal entry has the same id as the statement line entry always
+                        continue
+
+                        
                 # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
                 debit = False
                 
-                if transaction.credit == 0:
+                if transaction.credit == 0: 
                     debit = True
                     report_section[transaction.account_number.number]['total'] += transaction.debit
                     report_section[transaction.account_number.number]['debit'] += transaction.debit
@@ -753,7 +763,7 @@ class reports():
                     report_section[transaction.account_number.number]['total'] -= transaction.credit
                     report_section[transaction.account_number.number]['credit'] += transaction.credit
                 
-                print(transaction)
+                
                 for user in list(User.objects()):
                     if transaction.user_amount:
                         if debit == True:
@@ -977,7 +987,13 @@ class JournalEntry(Document):
             # filter transaction based on total value
             # Open transaction are same sum, reconciled account with same amount.
             # open_transaction = list(Transaction.objects().aggregate({"$match": {"cedit":{"$eq": transaction1.debit}, "debit":{"$eq": transaction1.credit}, "account_number":{"$ne": transaction1.account_number.id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-            open_transaction = list(Transaction.objects(credit=transaction1.debit, debit=transaction1.credit, account_number__ne=transaction1.account_number.id, account_number__in=[account.id for account in list(Account.objects(reconciled=True))], date=transaction1.date))
+            open_transaction = list(Transaction.objects(credit=transaction1.debit, 
+                                                        debit=transaction1.credit, 
+                                                        account_number__ne=transaction1.account_number.id, 
+                                                        account_number__in=[account.id for account in list(Account.objects(reconciled=True))], 
+                                                        date=transaction1.date,
+
+                                                        ))
         
         except DoesNotExist:
             open_transaction = []

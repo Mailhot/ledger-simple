@@ -1,6 +1,7 @@
 import objects
 import datetime
 import helpers
+import sys
 
 
 def import_chart_of_account(filename='./data/chartofaccount/ChartofAccounts.csv'):
@@ -8,7 +9,7 @@ def import_chart_of_account(filename='./data/chartofaccount/ChartofAccounts.csv'
 
 
 def process_statement(id_, force=False):
-    # Force means that all lines will be forcefully reprocessed. 
+    # Force means that all lines will be forcefully reprocessed.
     # Force = False means that only the lines with incomplete user_amount will be reprocessed.
     statement = objects.Statement.objects.get(id_=id_)
 
@@ -59,12 +60,16 @@ def process_journal_entry(id_, force=False):
 
 if __name__ == "__main__":
 
-    if not objects.User.objects():
-        objects.User.init_2_users()
-
     # objects.Counters.drop_collection()
 
     # objects.init_counters()
+
+    # sys.exit()
+
+    if not objects.User.objects():
+        objects.User.init_2_users()
+
+
 
     # objects.Account.drop_collection()
     # import_chart_of_account()
