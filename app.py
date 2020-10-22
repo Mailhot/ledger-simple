@@ -107,12 +107,7 @@ if __name__ == "__main__":
 
     # All data should be saved in files so that it does not get lost. (until database is reliable)
 
-    # 2020-10-06
-    # Need to add a step on recording transaction between 2 accounts that are 
-    # reconciled = y (just added)
-    # we can record the transaction as empty until we come accross the 2nd recording 
-    # we match the date and the amount with description, show result if more than 1
-    # 
+
     
 
 
@@ -157,11 +152,17 @@ if __name__ == "__main__":
     for transaction in objects.Transaction.objects():
         print(transaction)
 
-
+    # objects.print_account_list()
+    
     # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
+
     # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+
+    # objects.find_reconciled_error()
+    objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
 
     
