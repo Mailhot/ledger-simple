@@ -721,7 +721,13 @@ class reports():
                 line_value.append(report_section[report_section_key][report_line_key])
             print('%12s   %10.2f  %10.2f  %10.2f' %(report_section_key, line_value[0], line_value[1], line_value[2]))
 
-    def general_ledger(date_from, date_to):
+    def general_ledger(date_from, date_to, filter_account=None):
+        
+        if filter_account is not None:
+            filter_account_class = Account.get_account_by_number(filter_account)
+
+        filtered_transaction = []
+        
         # Create the report dict
         report_section = collections.OrderedDict()
         for account_ in list(Account.objects()):
@@ -742,13 +748,27 @@ class reports():
             print('journal_entry = ', journal_entry)
             for transaction in journal_entry.transactions:
                 
-                print(transaction)
+                
 
+                # Skip if not the searched account
+                if filter_account != None: 
+                    if transaction.account_number != filter_account_class:
+                        continue
+                    else:
+                        # filtered_transaction.append(transaction)
+                        filtered_transaction += journal_entry.transactions
+                        break
+
+
+                print(transaction)
                 # We do not count the transaction if it is reconciled from another transaction. The transaction will be taken care of in it's own journal entry.
                 # These reconciled transaction appears at 2 places even if they are the same transaction line. We need to make sure we dont count them twice.
                 if transaction.source_ref != None:
                     if transaction.source_ref.id_ != journal_entry.id_: # TODO: this is dodgy, it assume the journal entry has the same id as the statement line entry always
                         continue
+                
+
+
 
 
                 # this works unless there is debit and credit on same transaction, and this is not possible for the moment.
@@ -789,6 +809,8 @@ class reports():
                 account_class = Account.get_account_by_number(number=report_section_key)
                 print('%12s   %-40s  %10.2f %10.2f %10.2f  %15.2f  %10.2f' %(report_section_key, account_class.description, line_value[0], line_value[1], line_value[2], line_value[3], line_value[4]))
 
+        for transaction in filtered_transaction:
+            print(transaction)
 
     def balance_sheet(date):
         # Assets = Liabilities + Shareholders Equity
@@ -1478,6 +1500,50 @@ def check_rules(journal_entry, ):
     else:
         return None
 
+
+def find_reconciled_error(account_number=None):
+    # Account number shoudl be numeric and be an actual reconciled account
+    # the transaction should all be recorded from a line, this check for discreptancy on this statement.
+
+    if account_number:
+
+        if account_number_classes.reconciled != True:
+            print('Account is not reconciled, chose another one')
+            return None
+
+        account_number_class = Account.get_account_by_number(account_number)
+        account_number_classes = list().append(account_number_class)
+
+    else:
+        account_number_classes = list(Account.objects(reconciled=True))
+
+
+
+    transactions = list(Transaction.objects(account_number__in=account_number_classes))
+
+    # reconciled account = list(Transaction.objects(reconciled=True))
+
+    error_found = []
+
+    for transaction in transactions:
+        if transaction.source_ref == None:
+            error_found.append(transaction)
+            print(transaction)
+
+def find_journal_entry(account_number_form, account_number_to):
+    account_number_from_class = Account.get_account_by_number(account_number_form)
+    account_number_to_class = Account.get_account_by_number(account_number_to)
+
+    for journalentry in list(JournalEntry.objects()):
+        if journalentry.transactions[0].account_number == account_number_from_class:
+            if journalentry.transactions[-1].account_number == account_number_to_class:
+                print(journalentry)
+                for transaction in journalentry.transactions:
+                    print(transaction)
+
+def print_account_list():
+    for account in list(Account.objects()):
+        print(account)
 
 if __name__ == "__main__":
     #Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',')
