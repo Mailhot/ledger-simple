@@ -58,6 +58,20 @@ def process_journal_entry(id_, force=False):
         
         # if journalentry.transactions[0].acount_number in 
 
+def delete_transactions(id_):
+    for journalentry in list(objects.JournalEntry.objects()):
+        if journalentry.id_ >= id_:
+            print(journalentry)
+            for transaction in journalentry.transactions:
+                print(transaction)
+                delete_choice = input('Delete item? [yes] >>')
+                if delete_choice in ['y', '', ]:
+                    transaction.delete()
+                else:
+                    print('skipped')
+                    pass
+            journalentry.delete()
+
 
 if __name__ == "__main__":
 
@@ -114,7 +128,7 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # # Process the accounts.
+    # Process the accounts.
     # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
     # csv_files.sort()
     # for file in csv_files:
@@ -140,10 +154,12 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
     # process_statement(statement1.id_)
 
+    for transaction in objects.Transaction.objects():
+        print(transaction)
 
 
     # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
-
+    # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))

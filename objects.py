@@ -492,6 +492,7 @@ class StatementLine(Document): #
     statement = ReferenceField(Statement)
     destination_account = IntField(default=None)
     reconciled = BooleanField(default=False)
+    ratio_code = StringField(max_length=4, default=None)
     #journal_entry = ReferenceField(JournalEntry, default=None)
     def header():
         print("%4s %10s %8s %3s %4s %30s %6s %6s %6s %6s %6s %6s" %('id_', 'date', 'account_number', 'account_type', 'line_number', 'description',
@@ -526,7 +527,7 @@ class StatementLine(Document): #
 
 
 
-    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=0, reconciled=False):
+    def create_line(date, account_number, account_type, line_number, description, credit, debit, interest, advance, reimbursement, balance, statement, destination_account=0, reconciled=False, ratio_code=None):
         
         if destination_account == None or destination_account == '':
             destination_account = 0
@@ -546,7 +547,8 @@ class StatementLine(Document): #
                                         balance=balance,
                                         statement=statement,
                                         destination_account=destination_account,
-                                        reconciled=reconciled
+                                        reconciled=reconciled,
+                                        ratio_code=ratio_code
                                         )
         new_statement_line.save()
         return new_statement_line
@@ -943,12 +945,14 @@ class JournalEntry(Document):
             if not statement_line.account_type:
                 print('no account type')
                 account1 = Account.get_account_by_number(int(statement_line.account_number))
+        
             else:
                 account1 = Account.get_account(int(statement_line.account_number), statement_line.account_type)
+        
         except DoesNotExist:
             print('account1 = ', account1)
             print('this account does not exist! %s' %statement_line.account_number)
-            exit()
+            sys.exit()
 
         print('account1 = ', account1)
     
@@ -1228,15 +1232,27 @@ class JournalEntry(Document):
                 else:
                     print('Output account has no ratio set, use parent ratio?')
                     print('Parent ratio: ', transaction1.account_number.user_ratio)
-                    use_parent_ratio_choice = input('(y)/n >> ')
-
-                    if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
-                        transaction2.user_amount = transaction1.user_amount
-                        transaction2.save()
-                        # print('parent ratio used')
+                    if statement_line.ratio_code is not None:
+                        RATIO_CODE = {'f': 1,
+                                    'j': 0,
+                                    'e': 0.5,
+                                    'tf': 1,
+                                    'tj': 0,
+                                    'c': 0.5,
+                                    'm': 0.7,
+                                    }
+                        ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
 
                     else:
-                        ratio_choice = input('What ratio should we set to user1 (0-1)? >> ')
+                        use_parent_ratio_choice = input('(y)/n >> ')
+
+                        if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
+                            transaction2.user_amount = transaction1.user_amount
+                            transaction2.save()
+                            # print('parent ratio used')
+
+                        else:
+                            ratio_choice = input('What ratio should we set to user1 (0-1)? >> ')
 
                 if ratio_choice != None:
 
@@ -1387,13 +1403,13 @@ def credit_card_bill_parser(file, ):
                                                         balance=None,
                                                         destination_account=line_filtered[6],
                                                         statement=bill,
+                                                        ratio_code=line[5],
                                                         )
      
                     
                     newline1.statement = bill
                     newline1.save()
 
-                    # bill.transactions.append(transaction1)
                     bill.save()
 
     #bill.date = min(transaction.date for transaction in bill.transactions)
