@@ -34,7 +34,6 @@ def process_statement(id_, force=False):
                         objects.JournalEntry.create_from_statement_line(line1.id_)
 
             else:
-
                 objects.JournalEntry.create_from_statement_line(line1.id_)
 
         elif force == True:
@@ -49,6 +48,49 @@ def process_statement(id_, force=False):
                     line2.delete()
 
             objects.JournalEntry.create_from_statement_line(line1.id_)
+
+def process_statement_lines(force=False):
+    for line1 in list(objects.StatementLine.objects()):
+
+        if force == False:
+            #confirm the line has not already been processed.
+            line_entry = list(objects.JournalEntry.objects(statement_line=line1))
+            # print(line_entry)
+            if len(line_entry) == 1:
+                for line2 in line_entry:
+                    threat_line = False
+                    for transaction in line2.transactions:
+                        if len(transaction.user_amount) != len(objects.User.objects()):
+                            # delete this transaction and retreat the line
+                            threat_line = True
+                    if threat_line == True:
+                        print("DELETE LINE")
+                        for transaction in line2.transactions:
+                            transaction.delete()
+                        line2.delete()
+                        objects.JournalEntry.create_from_statement_line(line1.id_)
+
+            elif len(line_entry) > 1:
+                # TODO: print the 2 entry and chose to delete 1 of them
+                pass
+
+            else:
+                objects.JournalEntry.create_from_statement_line(line1.id_)
+
+        elif force == True:
+
+            line_entry = list(objects.JournalEntry.objects(statement_line=line1))
+            # print(line_entry)
+            if len(line_entry) > 0:
+                for line2 in line_entry:
+                    
+                    for transaction in line2.transactions:
+                        transaction.delete()
+                    line2.delete()
+
+            objects.JournalEntry.create_from_statement_line(line1.id_)
+
+
 
 
 def process_journal_entry(id_, force=False):
@@ -91,6 +133,7 @@ if __name__ == "__main__":
 
     # objects.Statement.drop_collection()
     # objects.StatementLine.drop_collection()
+
     # objects.JournalEntry.drop_collection()
     # objects.Transaction.drop_collection()
     
@@ -123,15 +166,18 @@ if __name__ == "__main__":
     # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
     # process_statement(statement1.id_)
 
-    # Process the accounts.
-    # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
-    # csv_files.sort()
-    # for file in csv_files:
-    #     print(file)
-    #     statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
-    #     process_statement(statement1.id_)
-    #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
+    print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
+
+    # Process the accounts.
+    csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    csv_files.sort()
+    for file in csv_files:
+        print(file)
+        # statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
+        # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
+
+    print('final lenght of statement line: ', len(objects.StatementLine.objects()))
 
 
 
@@ -140,29 +186,31 @@ if __name__ == "__main__":
     # txt_files.sort()
     # for file in txt_files:
     #     print(file)
-    #     statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
-    #     process_statement(statement1.id_)
+    #     # statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
+    #     # process_statement(statement1.id_)
     
+
+
     # objects.Statement.import_statement_from_file('./.data/2020-02_releve.csv', ',', True)
     # process_statement(20, force=True)
 
     # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
     # process_statement(statement1.id_)
 
-    for transaction in objects.Transaction.objects():
-        print(transaction)
+    # for transaction in objects.Transaction.objects():
+    #     print(transaction)
 
     # objects.print_account_list()
     
     # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
 
     # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
-    objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
+    # objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
 
     

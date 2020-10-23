@@ -1561,6 +1561,7 @@ def print_account_list():
     for account in list(Account.objects()):
         print(account)
 
+
 if __name__ == "__main__":
     #Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',')
     pass
