@@ -1,14 +1,16 @@
 from mongoengine import *
+from mongoengine.connection import _get_db
 from datetime import datetime
 from bson import ObjectId
 import csv
 import collections
 import helpers
+import unittest
 
 default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
-connect('ledger-simple')
+# connect('ledger-simple', alias='ledger-simple')
 
 # Exceptions are transaction that comes with same description but could go to different account.
 # they hare going to an account that we are reconciling also.
@@ -57,6 +59,7 @@ def init_counters():
     counter6.save()
     counter7 = Counters(id2='MonthlyBillId', sequence_value=0)
     counter7.save()
+
 
 class Counters(Document):
     id2 = StringField(max_length=20)
@@ -197,6 +200,47 @@ class Account(Document):
                         last_sum = new_account
 
                 line_count += 1
+
+class TestAccount(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        pass
+        # disconnect()
+        # connect('test')
+
+    @classmethod
+    def tearDownClass(cls):
+        # db = _get_db()
+        # print(type(dbtest))
+        # db.dropDatabase()('test')
+        Account.drop_collection()
+        disconnect()
+
+    def test_get_account_by_number(self,):
+
+        dict_values = list(ACCOUNT_TYPE.values()).index('Bank and Cash')
+        dict_keys = list(ACCOUNT_TYPE.keys())
+        test_ratio1 = 0.5
+        user_ratio = {'user1id': float(test_ratio1)/100, str('user2id'): float(1-test_ratio1)/100}
+
+        account = Account(number=100000,
+                        parent_account=None,
+                        child_account=None,
+                        description='this is the test account description',
+                        type_=dict_keys[dict_values],
+                        user_ratio=user_ratio,
+                        account_number=500000,
+                        account_type='PCA',
+                        reconciled=True,
+                        )
+        account.save()
+
+
+        self.assertEqual(Account.get_account_by_number(100000), account, 'should be %s' %account)
+
+    def test_import_accounts_from_file(self):
+        pass
 
 
 class Statement(Document):
@@ -1564,6 +1608,7 @@ def print_account_list():
 
 if __name__ == "__main__":
     #Statement.import_statement_from_file('./.data/2020-01_releve.csv', ',')
-    pass
+    connect('test')
+    unittest.main()
 
         
