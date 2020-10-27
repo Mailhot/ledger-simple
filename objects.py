@@ -381,9 +381,11 @@ class Statement(Document):
                 if choice == 'no' or choice == 'n':
                     return None
                 elif choice == 'yes' or choice == 'y' or choice == "":
-                    current_statement = Statement.objects.get(filename=filename)
+                    current_statement = Statement.objects(filename=filename)
+                    if len(current_statement) > 0:
+                        current_statement = current_statement[0]
+                    
         
-
         if current_statement == None:
             #create the new statement instance.
             current_statement = Statement.init_statement(filename)
@@ -402,21 +404,50 @@ class Statement(Document):
                     header_passed = True
                     continue
 
-                if len(line) > 1: # find the first line that is now empty.
-                    if created_statement == True:
-                        if len(line) == 15:
-                            if line[14] not in [None, 0, '']:
-                                destination_account = int(line[14])
+                if len(line) > 1: # find the first line that is not empty.
+
+                    # check for description with amount, remove amount as it would wrongly not find accounts afterwards.
+                    if '$' in line[5]:
+                        description_list = line[5].split(':')
+                        split_description = description_list[0]
+                    else:
+                        split_description = line[5]
+
+                    if len(line) == 15:
+                        if line[14] not in [None, 0, '']:
+                            destination_account = int(line[14])
                                 
                         else:
                             destination_account = None
 
-                        # check for description with amount, remove amount as it would wrongly not find accounts afterwards.
-                        if '$' in line[5]:
-                            description_list = line[5].split(':')
-                            split_description = description_list[0]
-                        else:
-                            split_description = line[5]
+
+
+                    if created_statement == True:
+                        
+                        
+                        new_line = StatementLine.create_line(date=line[3],
+                                                            account_number=line[1],
+                                                            account_type=line[2],
+                                                            line_number=line[4],
+                                                            description=split_description,
+                                                            credit=StatementLine.to_float_or_zero(line[7]),
+                                                            debit=StatementLine.to_float_or_zero(line[8]),
+                                                            interest=StatementLine.to_float_or_zero(line[9]),
+                                                            advance=StatementLine.to_float_or_zero(line[11]),
+                                                            reimbursement=StatementLine.to_float_or_zero(line[12]),
+                                                            balance=StatementLine.to_float_or_zero(line[13]),
+                                                            statement=current_statement,
+                                                            destination_account=destination_account,
+                                                            )
+
+                        if new_line == None:
+                            continue
+                        # add newly imported line to statement.
+                        #current_statement.lines.append(new_line)
+
+                    elif created_statement == False:
+                        # line_number_list = []
+                        # line_number_list.append(line[4])
 
                         new_line = StatementLine.create_line(date=line[3],
                                                             account_number=line[1],
@@ -433,25 +464,21 @@ class Statement(Document):
                                                             destination_account=destination_account,
                                                             )
 
-                        # add newly imported line to statement.
-                        #current_statement.lines.append(new_line)
 
-                    elif created_statement == False:
-                        line_number_list = []
-                        line_number_list.append(line[4])
-                        new_line = list(StatementLine.objects(statement__in=current_statement_list).filter(line_number__in=line_number_list, account_number__in=[line[1]], account_type__in=[line[2]]))[0]
-                        new_line.date = line[3]
-                        new_line.account_number = line[1]
-                        new_line.account_type = line[2]
-                        new_line.line_number = line[4]
-                        new_line.description = line[5]
-                        new_line.credit = StatementLine.to_float_or_zero(line[7])
-                        new_line.debit = StatementLine.to_float_or_zero(line[8])
-                        new_line.interest = StatementLine.to_float_or_zero(line[9])
-                        new_line.advance = StatementLine.to_float_or_zero(line[11])
-                        new_line.reimbursement = StatementLine.to_float_or_zero(line[12])
-                        new_line.balance = StatementLine.to_float_or_zero(line[13])
-                        new_line.save()
+
+                        # new_line = list(StatementLine.objects(statement__in=current_statement_list).filter(line_number__in=line_number_list, account_number__in=[line[1]], account_type__in=[line[2]]))[0]
+                        # new_line.date = line[3]
+                        # new_line.account_number = line[1]
+                        # new_line.account_type = line[2]
+                        # new_line.line_number = line[4]
+                        # new_line.description = line[5]
+                        # new_line.credit = StatementLine.to_float_or_zero(line[7])
+                        # new_line.debit = StatementLine.to_float_or_zero(line[8])
+                        # new_line.interest = StatementLine.to_float_or_zero(line[9])
+                        # new_line.advance = StatementLine.to_float_or_zero(line[11])
+                        # new_line.reimbursement = StatementLine.to_float_or_zero(line[12])
+                        # new_line.balance = StatementLine.to_float_or_zero(line[13])
+                        # new_line.save()
 
 
 
@@ -532,6 +559,24 @@ class StatementLine(Document): #
         if destination_account == None or destination_account == '':
             destination_account = 0
 
+        existing_lines = list(StatementLine.objects(date=date, 
+                                            account_number=account_number,
+                                            account_type=account_type,
+                                            line_number=line_number,
+                                            description=description,
+                                            credit=credit,
+                                            debit=debit,
+                                            interest=interest,
+                                            advance=advance,
+                                            reimbursement=reimbursement,
+                                            balance=balance,
+                                            ))
+
+        if len(existing_lines) > 1:
+            choice = choose_from_list(existing_lines)
+            # print('this line already exist')
+            # print(existing_lines[0])
+            return None
 
         new_statement_line = StatementLine(id_=getNextSequenceValue('StatementLineId'),
                                         date=date,
@@ -550,6 +595,7 @@ class StatementLine(Document): #
                                         reconciled=reconciled,
                                         ratio_code=ratio_code
                                         )
+
         new_statement_line.save()
         return new_statement_line
 
