@@ -2,6 +2,7 @@ import objects
 import datetime
 import helpers
 import sys
+import function
 
 
 def import_chart_of_account(filename='./data/chartofaccount/ChartofAccounts.csv'):
@@ -114,28 +115,44 @@ def delete_transactions(id_):
                     pass
             journalentry.delete()
 
-
-if __name__ == "__main__":
-
-    # objects.Counters.drop_collection()
-
-    # objects.init_counters()
-
-    # sys.exit()
+def init_db(force=False):
+    
+    if not objects.Counters.objects():
+        objects.init_counters()
+        print('counters init')
 
     if not objects.User.objects():
         objects.User.init_2_users()
+        print('User init')
+
+    if not objects.Account.objects():
+        import_chart_of_account()
+        print('Account init')
 
 
 
-    # objects.Account.drop_collection()
-    # import_chart_of_account()
+    if  force == True:
 
-    # objects.Statement.drop_collection()
-    # objects.StatementLine.drop_collection()
+        objects.Counters.drop_collection()
+        objects.init_counters()
 
-    # objects.JournalEntry.drop_collection()
-    # objects.Transaction.drop_collection()
+        objects.User.drop_collection()
+        objects.User.init_2_users()
+
+        objects.Account.drop_collection()
+        import_chart_of_account()
+
+        objects.Statement.drop_collection()
+        objects.StatementLine.drop_collection()
+
+        objects.JournalEntry.drop_collection()
+        objects.Transaction.drop_collection()
+
+
+
+if __name__ == "__main__":
+
+
     
     base_folder = './data'
 
@@ -148,36 +165,34 @@ if __name__ == "__main__":
     # transactions with same description should be held and dispatched later when another 
     # match the exact amount at same date. if not then we ask the user.
 
+    # TODO: put the split description on amount after the statement line, so we keep the statement information integral.
     # All data should be saved in files so that it does not get lost. (until database is reliable)
-
-
-    
-
+    # init_db(force=True) # set Force=True to reset db
+    init_db(force=False) # set Force=True to reset db
 
     user1 = objects.User.objects[0]
     user2 = objects.User.objects[1]
 
 
-    # #Print the list of statement id_
-    # for object_ in list(objects.Statement.objects()):
-    #     print(object_.id_)
-    
-
-    # statement1 = objects.Statement.import_statement_from_file('./data/2020-01_releve.csv', ',', True)
-    # process_statement(statement1.id_)
-
-
     print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
+    print('initial lenght of transactions: ', len(objects.Transaction.objects()))
 
-    # Process the accounts.
-    csv_files = helpers.find_csv_filenames(base_folder, ".csv")
-    csv_files.sort()
-    for file in csv_files:
-        print(file)
-        # statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
-        # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
+
+    imported_lines = function.StatementFunction.import_file('./data/2020-01_releve.csv', header=True)
+    function.StatementFunction.import_statement_lines(imported_lines)
+    function.StatementFunction.process_statement_lines()
+
+    # # Process the accounts.
+    # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
+    # csv_files.sort()
+    # for file in csv_files:
+    #     print(file)
+        
+    #     # statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
+    #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
+    print('final lenght of transactions: ', len(objects.Transaction.objects()))
 
 
 

@@ -8,6 +8,7 @@ class TestStatementFunction(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # disconnect()
         objects.StatementLine.drop_collection()
         objects.Counters.drop_collection()
         objects.Account.drop_collection()
@@ -19,7 +20,7 @@ class TestStatementFunction(unittest.TestCase):
         objects.Account.import_accounts_from_file(filename='./test/test_ChartofAccounts.csv')
 
 
-        # disconnect()
+
         connect('test')
 
     @classmethod
@@ -84,17 +85,6 @@ class TestStatementFunction(unittest.TestCase):
         test_ratio1 = 0.5
         user_ratio = {'user1id': float(test_ratio1)/100, str('user2id'): float(1-test_ratio1)/100}
 
-        # account = objects.Account(number=100000,
-        #                         parent_account=None,
-        #                         child_account=None,
-        #                         description='this is the test account description',
-        #                         type_=dict_keys[dict_values],
-        #                         user_ratio=user_ratio,
-        #                         account_number=500000,
-        #                         account_type='PCA',
-        #                         reconciled=True,
-        #                         )
-        # account.save()
         account = objects.Account.get_account_by_number(111001)
 
         self.assertEqual(account.number, 111001, 'should be %s' %account)
@@ -103,8 +93,15 @@ class TestStatementFunction(unittest.TestCase):
         self.assertEqual(account.account_type, 'PCA', 'should be %s' %account)
 
     def test_import_accounts_from_file(self):
-        pass
+        imported_lines = function.StatementFunction.import_file('./test/test_releve.csv', header=True)
+        function.StatementFunction.import_statement_lines(imported_lines)
+        self.assertEqual(len(objects.StatementLine.objects()), 72, 'should be 72 after initial import')
+        function.StatementFunction.import_statement_lines(imported_lines)
+        self.assertEqual(len(objects.StatementLine.objects()), 72, 'should be 72 after second import')
 
+    def test_import_statement_lines(self):
+        function.StatementFunction.process_statement_lines()
+        self.assertEqual(len(objects.StatementLine.objects()), 72, 'should be 72 after initial import')
 
 if __name__ == '__main__':
 

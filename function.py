@@ -10,16 +10,16 @@ import csv
 class StatementFunction():
     """This is an attempt to separate function from objects,
     we also want to make code clearer."""
-    def find_description_amount(line):
+    def find_description_amount(description):
         """take the description with potentially an amount added.
         remove the amount if it has, return the original description if it had not.
         """
         # check for description with amount, remove amount as it would wrongly not find accounts afterwards.
-        if '$' in line:
+        if '$' in description:
             description_list = line.split(':')
             split_description = description_list[0]
         else:
-            split_description = line
+            split_description = description
 
         return split_description
 
@@ -39,8 +39,11 @@ class StatementFunction():
 
         return lines      
 
-    def import_statemet_line(lines, ):
+    def import_statement_lines(lines=None,):
         """ Import statement line regardless of files we imported it from."""
+        if lines == None: 
+            lines = list(objects.StatementLine.objects())
+
         threated_lines = 0
         imported_lines = 0
 
@@ -57,23 +60,28 @@ class StatementFunction():
             else:
                 destination_account = None
 
-            split_description = StatementFunction.find_description_amount(line[5])
+            
 
             existing_lines = objects.StatementLine.objects(date=line[3],
                                                 account_number=line[1],
                                                 account_type=line[2],
-                                                line_number=line[4],
-                                                description=split_description,
+                                                # line_number=line[4],
+                                                # description=line[5],
                                                 credit=objects.StatementLine.to_float_or_zero(line[7]),
                                                 debit=objects.StatementLine.to_float_or_zero(line[8]),
-                                                interest=objects.StatementLine.to_float_or_zero(line[9]),
-                                                advance=objects.StatementLine.to_float_or_zero(line[11]),
-                                                reimbursement=objects.StatementLine.to_float_or_zero(line[12]),
-                                                balance=objects.StatementLine.to_float_or_zero(line[13]),
-                                                destination_account=destination_account,
+                                                # interest=objects.StatementLine.to_float_or_zero(line[9]),
+                                                # advance=objects.StatementLine.to_float_or_zero(line[11]),
+                                                # reimbursement=objects.StatementLine.to_float_or_zero(line[12]),
+                                                # balance=objects.StatementLine.to_float_or_zero(line[13]),
+                                                # destination_account=destination_account,
                                                 )
 
-            if len(existing_lines) > 1:
+
+            if len(existing_lines) >= 1:
+                print('existing lines')
+                for line in existing_lines:
+
+                    print(line)
                 print('line already existing, skipped!')
                 continue
 
@@ -82,7 +90,7 @@ class StatementFunction():
                                                     account_number=line[1],
                                                     account_type=line[2],
                                                     line_number=line[4],
-                                                    description=split_description,
+                                                    description=line[5],
                                                     credit=objects.StatementLine.to_float_or_zero(line[7]),
                                                     debit=objects.StatementLine.to_float_or_zero(line[8]),
                                                     interest=objects.StatementLine.to_float_or_zero(line[9]),
@@ -93,6 +101,8 @@ class StatementFunction():
                                                     destination_account=destination_account,
                                                     )
                 new_line.save()
+                print('line added %s'% new_line.id)
+                print(new_line)
 
             if first_line == True:
                 first_line = False
@@ -105,8 +115,10 @@ class StatementFunction():
 
     def create_from_statement_line(statement_line_id_):
         print('')
+
         # Confirm it does not already exist.
         statement_line = objects.StatementLine.get_statement_line(statement_line_id_)
+
         objects.StatementLine.header()
         print(statement_line)
 
@@ -151,25 +163,6 @@ class StatementFunction():
         
         transaction1.save()
 
-
-        # Step 1
-        # Check if existing transaction are present, update source if yes.
-        # This actually happens when an inter account transaction is open (unreconciled)
-        # print('statement_line.account_type=', statement_line.account_type)
-        # if statement_line.account_type is not None:
-
-        #     try:
-
-        #         # statement_line_value = statement_line.credit + statement_line.debit
-
-        #         # open_transaction = list(Transaction.objects().aggregate({"$addFields": {"total": {"$add": ["$credit", "$debit", ]}}}, {"$match": {"total":{"$eq": statement_line_value}, "account_number":{"$ne": Account.get_account(account_number=statement_line.account_number, account_type=statement_line.account_type).id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-        #         open_transaction = list(Transaction.objects().aggregate({"$match": {"credit":{"$eq": transaction1.debit}, "debit":{"$eq":transaction1.credit}, "account_number":{"$ne": transaction1.account_number.id, "$in": [account.id for account in list(Account.objects(reconciled=True))]}, "date":{"$eq": statement_line.date}}}))
-        #         # print(open_transaction)
-                
-        #     except DoesNotExist:
-        #         open_transaction = []
-
-        # elif statement_line.account_type == None:
         try:
             # statement_line_value = statement_line.credit + statement_line.debit
             # filter transaction based on total value
@@ -292,7 +285,219 @@ class StatementFunction():
 
                 return 'ok'
 
+        if len(open_transaction) == 0: 
 
-    
+            past_statement_line = list(StatementLine.objects(account_number=statement_line.account_number,
+                                                account_type=statement_line.account_type,
+                                                description=find_description_amount(statement_line.description), # Remove the amount if there is in the description.
+                                                id__lt=statement_line.id, # make sure the statement_line has been evaluated before the one we are threating.
+                                                ))
+
+            print('len past statement_line =', len(past_statement_line))
+
+            #                 # print('past statement_line appened!')
+            #                 # print(past_statement_line)
+            #                 print('exception_found == True')
+            #                 exception_found = True
+            #                 break
+
+
+            # print('statement_line destination account = ', statement_line.destination_account)
+
+            if statement_line.destination_account not in ['', None, 0]:
+                result_account = Account.objects.get(number=statement_line.destination_account)
+            
+            elif len(past_statement_line) > 0:
+                # TODO: Would need to find the most recent past_statement_line to be able to have proper account if modification were made.
+                # Until we get the most recent, we use the last one.
+                selected_past_statement_line = past_statement_line[-1] # Best way to find the earlyest line for now. (need improvement.)
+                # print(selected_past_statement_line.to_json())
+
+                # Find the journal entry with this line (assuming it exist)
+                # TODO: what if it does not exist?
+                # if exception_found == False:
+                #     print(past_statement_line)
+                #     past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line=selected_past_statement_line)))
+                # else:
+                # print('extended past statement line!!')
+                # past_journal_entry = helpers.choose_from_list(list(JournalEntry.objects(statement_line__in=past_statement_line)))
+                past_journal_entry = list(JournalEntry.objects(statement_line__in=past_statement_line))
+                past_output_transaction = past_journal_entry[-1].transactions[-1]
+                Account.header()
+                # print(past_output_transaction.account_number)
+
+                # threat_choice = input('Would you like to select the destination account manually? (y)/n >> ')
+                # if threat_choice == 'y':
+                #     pass
+                #     # TODO: revert to next else statement (manual account choice.)
+                result_account = past_output_transaction.account_number
+
+                
+            else:
+                result_account = helpers.choose_account()
+
+
+            if result_account.reconciled == True and account1.reconciled == True:
+                # this transaction should be reconciled at some point, we did not find it this time, but should when threating the other side of transaction.
+                new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
+                                            date=statement_line.date,
+                                            statement_line=statement_line,
+                                            )
+
+                new_journal_entry.transactions.append(transaction1)
+                new_journal_entry.save()
+                return 'ok' # we assume we will find the corresponding transaction at some other point.
+
+            transaction2 = Transaction.add_transaction(date=statement_line.date,
+                                                        account_number=result_account,
+                                                        credit=transaction1.debit,
+                                                        debit=transaction1.credit,
+                                                        source=None, 
+                                                        source_ref=None,
+                                                        )
+
+            transaction2.save()
+
+            new_journal_entry = JournalEntry(id_=getNextSequenceValue('JournalEntryId'),
+                                            date=statement_line.date,
+                                            statement_line=statement_line,
+                                            )
+            new_journal_entry.save()
+
+            new_journal_entry.transactions.append(transaction1)
+            new_journal_entry.transactions.append(transaction2)
+            new_journal_entry.save()
+
+            
+            #################################
+            # Check ratios
+            # TODO: this would need a function to itself.
+            # print('transaction2.user_amount = ', transaction2.user_amount)
+            if transaction2.user_amount == {}: # We take for granted the transaction1 has always a ratio as it's a know account with defined ratio.
+                ratio_choice = None
+
+                output_ratio = check_rules(new_journal_entry) # this is a preset rules for specific transactions, instead of asking every time
+
+                if output_ratio != None: 
+                    ratio_choice = output_ratio[0]
+
+                else:
+                    print('Output account has no ratio set, use parent ratio?')
+                    print('Parent ratio: ', transaction1.account_number.user_ratio)
+                    if statement_line.ratio_code is not None:
+                        RATIO_CODE = {'f': 1,
+                                    'j': 0,
+                                    'e': 0.5,
+                                    'tf': 1,
+                                    'tj': 0,
+                                    'c': 0.5,
+                                    'm': 0.7,
+                                    }
+                        ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
+
+                    else:
+                        use_parent_ratio_choice = input('(y)/n >> ')
+
+                        if use_parent_ratio_choice == 'y' or use_parent_ratio_choice == '':
+                            transaction2.user_amount = transaction1.user_amount
+                            transaction2.save()
+                            # print('parent ratio used')
+
+                        else:
+                            ratio_choice = input('What ratio should we set to user1 (0-1)? >> ')
+
+                if ratio_choice != None:
+
+                    users = list(User.objects())
+                    transaction2.user_amount = {str(users[0].id_): float(ratio_choice) * (transaction2.credit + transaction2.debit), 
+                                                str(users[1].id_): (1-float(ratio_choice)) * (transaction2.credit + transaction2.debit)}
+                    transaction2.save()
+            # we need to keep the difference between accounts to see the transfer difference somehow.
+            # elif transaction1.account_number.user_ratio != transaction2.account_number.user_ratio:
+            #     transaction2.user_amount = transaction1.user_amount # take user amount from to affect to account.
+            #     transaction2.save()
+
+
+
+        # this code is doubled at line 1058
+        # Now that the 2 transaction have been saved, manage the interest
+        if statement_line_interest != 0 or statement_line.interest != 0:
+
+            # add 2 transaction to the journal entry to add interest expense to the entry.
+            # the interest expense were previously entered as credit to the account.
+            transaction3 = Transaction.add_transaction(date=statement_line.date,
+                        account_number=Account.get_account(int(statement_line.account_number), statement_line.account_type),
+                        credit=statement_line.interest,
+                        debit=0, 
+                        source=None, 
+                        source_ref=statement_line,
+                        )
+
+            transaction3.save()
+
+            transaction4 = Transaction.add_transaction(date=statement_line.date,
+                        account_number=Account.objects.get(number=513010),
+                        credit=0,
+                        debit=statement_line.interest, 
+                        source=None, 
+                        source_ref=statement_line,
+                        )
+
+            transaction4.save()
+            new_journal_entry.transactions.append(transaction3)
+            new_journal_entry.transactions.append(transaction4)
+            transaction4.user_amount = transaction3.user_amount # take the parent ratio as the interest expense ratio.
+            transaction4.save()
+            new_journal_entry.save()
+
+
+    def process_statement_lines(force=False):
+
+        for line1 in list(objects.StatementLine.objects()):
+
+            if force == False:
+                #confirm the line has not already been processed.
+                line_entry = list(objects.JournalEntry.objects(statement_line=line1))
+                # print(line_entry)
+                if len(line_entry) >= 1:
+                    print('entry skipped already processed')
+                    continue
+
+                    for line2 in line_entry:
+                        threat_line = False
+                        for transaction in line2.transactions:
+                            if len(transaction.user_amount) != len(objects.User.objects()):
+                                # delete this transaction and retreat the line
+                                threat_line = True
+                        if threat_line == True:
+                            print("DELETE LINE")
+                            for transaction in line2.transactions:
+                                transaction.delete()
+                            line2.delete()
+                            objects.JournalEntry.create_from_statement_line(line1.id_)
+
+                elif len(line_entry) > 1:
+                    # TODO: print the 2 entry and chose to delete 1 of them
+                    pass
+
+                else:
+                    objects.JournalEntry.create_from_statement_line(line1.id_)
+
+            elif force == True:
+
+                line_entry = list(objects.JournalEntry.objects(statement_line=line1))
+                # print(line_entry)
+                if len(line_entry) > 0:
+                    for line2 in line_entry:
+                        
+                        for transaction in line2.transactions:
+                            transaction.delete()
+                        line2.delete()
+
+                objects.JournalEntry.create_from_statement_line(line1.id_)
+
+
+
+        
 
 

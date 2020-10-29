@@ -10,7 +10,7 @@ import unittest
 default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
-# connect('ledger-simple', alias='ledger-simple')
+connect('ledger-simple-test1')
 
 # Exceptions are transaction that comes with same description but could go to different account.
 # they hare going to an account that we are reconciling also.
@@ -498,7 +498,9 @@ class StatementLine(Document): #
     destination_account = IntField(default=None)
     reconciled = BooleanField(default=False)
     ratio_code = StringField(max_length=4, default=None)
+    threated = BooleanField(default=False)
     #journal_entry = ReferenceField(JournalEntry, default=None)
+
     def header():
         print("%4s %10s %8s %3s %4s %30s %6s %6s %6s %6s %6s %6s" %('id_', 'date', 'account_number', 'account_type', 'line_number', 'description',
                                                         'credit', 'debit', 'interest', 'advance', 'reimbursement', 'balance'))
