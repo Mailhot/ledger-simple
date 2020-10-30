@@ -65,14 +65,14 @@ class StatementFunction():
             existing_lines = objects.StatementLine.objects(date=line[3],
                                                 account_number=line[1],
                                                 account_type=line[2],
-                                                # line_number=line[4],
-                                                # description=line[5],
+                                                line_number=int(line[4]),
+                                                description=line[5],
                                                 credit=objects.StatementLine.to_float_or_zero(line[7]),
                                                 debit=objects.StatementLine.to_float_or_zero(line[8]),
                                                 # interest=objects.StatementLine.to_float_or_zero(line[9]),
                                                 # advance=objects.StatementLine.to_float_or_zero(line[11]),
                                                 # reimbursement=objects.StatementLine.to_float_or_zero(line[12]),
-                                                # balance=objects.StatementLine.to_float_or_zero(line[13]),
+                                                balance=objects.StatementLine.to_float_or_zero(line[13]),
                                                 # destination_account=destination_account,
                                                 )
 

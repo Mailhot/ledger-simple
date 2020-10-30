@@ -116,6 +116,13 @@ def delete_transactions(id_):
             journalentry.delete()
 
 def init_db(force=False):
+    if force == True:
+        choice = input('you want to reset the db, are you sure? >> ')
+        if choice in ['yes', 'y', '']:
+            pass
+        else:
+            print('cancelled')
+            sys.exit()
     
     if not objects.Counters.objects():
         objects.init_counters()
@@ -174,11 +181,11 @@ if __name__ == "__main__":
     user2 = objects.User.objects[1]
 
 
-    print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
-    print('initial lenght of transactions: ', len(objects.Transaction.objects()))
+    # print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
+    # print('initial lenght of transactions: ', len(objects.Transaction.objects()))
 
 
-    imported_lines = function.StatementFunction.import_file('./data/2020-01_releve.csv', header=True)
+    imported_lines = function.StatementFunction.import_file('./data/2020-02_releve.csv', header=True)
     function.StatementFunction.import_statement_lines(imported_lines)
     function.StatementFunction.process_statement_lines()
 
@@ -191,8 +198,8 @@ if __name__ == "__main__":
     #     # statement1 = objects.Statement.import_statement_from_file(base_folder + '/' + file, ',', header=True)
     #     # objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=10, day=25))
 
-    print('final lenght of statement line: ', len(objects.StatementLine.objects()))
-    print('final lenght of transactions: ', len(objects.Transaction.objects()))
+    # print('final lenght of statement line: ', len(objects.StatementLine.objects()))
+    # print('final lenght of transactions: ', len(objects.Transaction.objects()))
 
 
 
@@ -223,7 +230,7 @@ if __name__ == "__main__":
     objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
 
-    # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
     # objects.find_journal_entry(account_number_form=111001, account_number_to=513010)

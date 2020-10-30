@@ -10,6 +10,8 @@ A balance can be shown of the amount owed between users.
 
 It uses python with a terminal interface (script only) and mongoengine with mongodb as a database.
 
+Note: All transaction should appear on only 1 statement, if you change the line number, the system will threat it as a different line. We could remove this, but it would on the other hand threat different line (different line number) with same description and same amount (credit and debit) same date and same balance as being the same statement line, and this happen on 20th febuary, 2020, two transaction to the same account on same day that resulted in same balance would be threated as same transaction.
+
 Working Principle
 
 First we take the statement to be imported (account statement are to be .csv without accented character)
