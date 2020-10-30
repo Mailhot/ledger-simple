@@ -754,6 +754,8 @@ class reports():
 
 
         for journal_entry in journal_entry_filtered:
+            print('')
+            print(journal_entry.statement_line)
             print('journal_entry = ', journal_entry)
             for transaction in journal_entry.transactions:
                 
@@ -802,6 +804,10 @@ class reports():
                             report_section[transaction.account_number.number][str(user.id_)] -= transaction.user_amount[str(user.id_)]
         
         #print(report_section)
+        print('')
+        print('')
+        print(date_from, date_to)
+        print('')
         print('%12s   %-40s  %10s %10s %10s  %15s  %10s' %('section', 'description', 'total', 'credit', 'debit', 'user1', 'user2'))
         for report_section_key in report_section.keys():
             #print(report_section_key)
@@ -939,13 +945,13 @@ class JournalEntry(Document):
         print("%6s %10s %15s %10s %12s" %('id_', 'date', 'statement_line', 'amount' 'transactions',))
 
     def __str__(self):
-        output_transaction_id = []
-        if self.transactions:
-            for transaction in self.transactions:
-                output_transaction_id.append('%s, %s' %(transaction.account_number.number, transaction.account_number.description))
+        # output_transaction_id = []
+        # if self.transactions:
+        #     for transaction in self.transactions:
+        #         output_transaction_id.append('%s, %s' %(transaction.account_number.number, transaction.account_number.description))
         amount = self.statement_line.credit + self.statement_line.debit + self.statement_line.interest + self.statement_line.advance + self.statement_line.reimbursement
 
-        return "%6s %10s %15s %8.2f %12s" %(self.id_, self.date.date(), self.statement_line.description, amount, output_transaction_id,)
+        return "%6s %10s %15s %8.2f" %(self.id_, self.date.date(), self.statement_line.description, amount, )
 
 
     def create_from_statement_line(statement_line_id_):
@@ -1329,177 +1335,6 @@ class JournalEntry(Document):
 
 
 
-def credit_card_bill_parser(file, ):
-
-    # bill = MonthlyBill()
-    bill = Statement.init_statement(file,)
-    balance_checker = False
-    stop_words = ['Détail des frais de crédit', 
-                    'Credit charge details',
-                    'Total:',
-                    'Total :                                    ',
-                    'Total :',
-                    'Détail des frais de crédit ',
-                    'Desjardins BONUSDOLLARS Rewards Program',
-                    ]
-
-    
-    # with open(file, "r",  encoding="ISO-8859-1") as the_file:
-    with open(file, "r",  encoding="utf-8") as the_file: #for some files the default encoding seem to fall back to iso-889-1 instead of utf-8
-
-        transaction_line_counter = None
-        file_reader = the_file.readlines()
-        line_count = 0
-        for line in file_reader:
-            elements = line[:-1].split('\t')
-            # filter the element a little
-            line_filtered = []
-
-            for item in elements:
-                if item != "":
-                    line_filtered.append(item)
-
-
-
-            print(line_filtered)
-
-            # if line_filtered[0] == "Current transaction summary":
-            #     balance == True
-            # else line_filtered[0] == 
-            if len(line_filtered) < 1:
-                continue
-            elif len(line_filtered) == 1:
-                if line_filtered[0].startswith('Statement date:'):
-                    line_filtered = ['Statement date:', line_filtered[0][14:]]
-
-            # Get what we need to build the bill recap
-            bill.update_values(line_filtered)
-
-
-            # print("previous balance report = ", bill.previous_balance_report)
-
-
-            if line_filtered[0].startswith('Transactions made with the card of'):
-                transaction_line_counter = 0
-                print("Starting loggin line")
-                continue
-
-            elif line_filtered[0].startswith('Transaction date'):
-                transaction_line_counter = 2
-                print("Starting loggin payments")
-                continue
-
-            # elif line_filtered[0].startswith('Total:') or line_filtered[0].startswith('Détail des frais de crédit') or line_filtered[0].startswith('Total :'):
-
-            elif line_filtered[0].strip() in stop_words:
-                transaction_line_counter = None
-                print("No longer logging lines")
-                continue
-
-            elif type(transaction_line_counter) == int:
-                # print(transaction_line_counter)
-                # print(line_filtered[0])
-                # print('\n'.join(difflib.ndiff([line_filtered[0]], [stop_words[0]])))
-                # if line_filtered[0] != stop_words[0]:
-                #     print('they are the same word')
-                # print(type(stop_words[0]))
-                transaction_line_counter += 1
-                if transaction_line_counter <= 2: # skip first line
-                    continue
-                else:
-                    datetime_object = parse_date(line_filtered[0])
-                    datetime_object_posted = parse_date(line_filtered[1])
-
-                    if line_filtered[4].startswith('CR'):
-                        credit = 0
-                        debit = float(line_filtered[4][2:].replace(',', ''))
-
-                    else:
-                        debit = 0
-                        credit = float(line_filtered[4].replace(',', ''))
-                    #TODO: Need to add the journal entry and then the transaction pair.
-                    newline1 = Transaction.add_transaction
-                    newline1 = StatementLine.create_line(date=datetime_object,
-                                                        account_number=211100,
-                                                        account_type=None,
-                                                        line_number=line_filtered[2],
-                                                        description=line_filtered[3],
-                                                        credit=credit,
-                                                        debit=debit,
-                                                        interest=None,
-                                                        advance=None,
-                                                        reimbursement=None,
-                                                        balance=None,
-                                                        destination_account=line_filtered[6],
-                                                        statement=bill,
-                                                        ratio_code=line[5],
-                                                        )
-     
-                    
-                    newline1.statement = bill
-                    newline1.save()
-
-                    bill.save()
-
-    #bill.date = min(transaction.date for transaction in bill.transactions)
-    #bill.stop_date = max(transaction.date for transaction in bill.transactions)
-    #bill.save()
-
-    return bill
-
-def update_purchase(self, value):
-        value = value.replace(',', '')
-        self.purchase_report = float(value)
-        print("Updated purchase = ", float(value))
-
-def update_payments(self, value):
-    value = value.replace(',', '')
-    self.payments_report = float(value)
-    print("update_payments = ", float(value))
-
-def update_new_balance(self, value):
-    value = value.replace(',', '')
-    self.new_balance_report = float(value)
-    print("update_new_balance = ", float(value))
-
-def update_previous_balance(self, value):
-    value = value.replace(',', '')
-    if self.previous_balance_report == 0:
-        self.previous_balance_report = float(value)
-
-    print("previous_balance = ", self.previous_balance_report)
-
-def update_frais_credits(self, value):
-    value = value.replace(',', '')
-    self.frais_credits_report = float(value)
-    print("update frais de credits = ", value)
-
-def update_name(self, value):
-    self.name = value
-    print("Updated name = ", self.name)
-
-def update_values(self, list_):
-
-    action = self.VALUES.get(list_[0])
-    if action:
-        action(list_[1])
-
-def parse_date(date_str):
-    MONTHS = {'avr': 'apr',
-            }
-
-    # print(datetime.datetime(2020, 5, 2).strftime('%d %b %Y'))
-
-
-    # Convert date string in the format 12 Dec 2012 in an object
-    datetime_str2 = date_str.lower()
-
-    datetime_split = datetime_str2.split(' ')
-    if datetime_split[1] in MONTHS.keys():
-        datetime_split[1] = MONTHS.get(datetime_split[1])
-        datetime_str2 = " ".join(datetime_split)
-    datetime_object = datetime.strptime(datetime_str2, '%d %b %Y')
-    return datetime_object
 
 class JournalEntryToTransaction(Document):
 

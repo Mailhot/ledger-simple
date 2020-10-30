@@ -1,6 +1,8 @@
 import objects
 import unittest
 import csv
+import datetime
+import helpers
 
 
 
@@ -41,6 +43,8 @@ class StatementFunction():
 
     def import_statement_lines(lines=None,):
         """ Import statement line regardless of files we imported it from."""
+
+
         if lines == None: 
             lines = list(objects.StatementLine.objects())
 
@@ -82,7 +86,7 @@ class StatementFunction():
                 for line in existing_lines:
 
                     print(line)
-                print('line already existing, skipped!')
+                print('credit card line already existing, skipped!')
                 continue
 
             else:
@@ -109,8 +113,7 @@ class StatementFunction():
                     
             line_counter += 1
 
-        print('%s new lines imported.' %imported_lines)
-        print('%s lines threaded' %threated_lines)
+        print('%s new lines imported out of %s lines threated.' %(imported_lines, threated_lines))
 
 
     def create_from_statement_line(statement_line_id_):
@@ -452,8 +455,15 @@ class StatementFunction():
 
 
     def process_statement_lines(force=False):
+        print('')
+        print('processing statement')
+        print('')
+
+        lines_imported = 0
+        lines_threated = 0
 
         for line1 in list(objects.StatementLine.objects()):
+            lines_threated += 1
 
             if force == False:
                 #confirm the line has not already been processed.
@@ -475,6 +485,7 @@ class StatementFunction():
                                 transaction.delete()
                             line2.delete()
                             objects.JournalEntry.create_from_statement_line(line1.id_)
+                            lines_imported += 1
 
                 elif len(line_entry) > 1:
                     # TODO: print the 2 entry and chose to delete 1 of them
@@ -482,6 +493,7 @@ class StatementFunction():
 
                 else:
                     objects.JournalEntry.create_from_statement_line(line1.id_)
+                    lines_imported += 1
 
             elif force == True:
 
@@ -495,9 +507,199 @@ class StatementFunction():
                         line2.delete()
 
                 objects.JournalEntry.create_from_statement_line(line1.id_)
+                lines_imported += 1
+
+        print('threated %s lines out of %s lines processed.' %(lines_imported, lines_threated))
 
 
+    def credit_card_bill_parser(file, ):
+
+        print('')
+        print('Parsing credit card bill to generate statement_line')
+        print('')
+
+        # bill = objects.Statement.init_statement(file,)
+        balance_checker = False
+        stop_words = ['Détail des frais de crédit', 
+                        'Credit charge details',
+                        'Total:',
+                        'Total :                                    ',
+                        'Total :',
+                        'Détail des frais de crédit ',
+                        'Desjardins BONUSDOLLARS Rewards Program',
+                        ]
 
         
+        # with open(file, "r",  encoding="ISO-8859-1") as the_file:
+        with open(file, "r",  encoding="utf-8") as the_file: #for some files the default encoding seem to fall back to iso-889-1 instead of utf-8
+            total_line = 0
+            line_added = 0
+            transaction_line_counter = None
+            file_reader = the_file.readlines()
+            line_count = 0
+            for line in file_reader:
+                total_line +=1
+                elements = line[:-1].split('\t')
+                # filter the element a little
+                line_filtered = []
+
+                for item in elements:
+                    if item != "":
+                        line_filtered.append(item)
 
 
+
+                print(line_filtered)
+
+                # if line_filtered[0] == "Current transaction summary":
+                #     balance == True
+                # else line_filtered[0] == 
+                if len(line_filtered) < 1:
+                    continue
+                elif len(line_filtered) == 1:
+                    if line_filtered[0].startswith('Statement date:'):
+                        line_filtered = ['Statement date:', line_filtered[0][14:]]
+
+                # Get what we need to build the bill recap
+                # bill.update_values(line_filtered)
+
+
+                # print("previous balance report = ", bill.previous_balance_report)
+
+
+                if line_filtered[0].startswith('Transactions made with the card of'):
+                    transaction_line_counter = 0
+                    print("Starting loggin line")
+                    continue
+
+                elif line_filtered[0].startswith('Transaction date'):
+                    transaction_line_counter = 2
+                    print("Starting loggin payments")
+                    continue
+
+                # elif line_filtered[0].startswith('Total:') or line_filtered[0].startswith('Détail des frais de crédit') or line_filtered[0].startswith('Total :'):
+
+                elif line_filtered[0].strip() in stop_words:
+                    transaction_line_counter = None
+                    print("No longer logging lines")
+                    continue
+
+                elif type(transaction_line_counter) == int:
+                    # print(transaction_line_counter)
+                    # print(line_filtered[0])
+                    # print('\n'.join(difflib.ndiff([line_filtered[0]], [stop_words[0]])))
+                    # if line_filtered[0] != stop_words[0]:
+                    #     print('they are the same word')
+                    # print(type(stop_words[0]))
+                    transaction_line_counter += 1
+                    if transaction_line_counter <= 2: # skip first line
+                        continue
+                    else:
+                        datetime_object = helpers.parse_date(line_filtered[0])
+                        datetime_object_posted = helpers.parse_date(line_filtered[1])
+
+                        if line_filtered[4].startswith('CR'):
+                            credit = 0
+                            debit = float(line_filtered[4][2:].replace(',', ''))
+
+                        else:
+                            debit = 0
+                            credit = float(line_filtered[4].replace(',', ''))
+                        #TODO: Need to add the journal entry and then the transaction pair.
+                        # newline1 = Transaction.add_transaction
+                        existing_lines = objects.StatementLine.objects(date=datetime_object,
+                                                            account_number=211100,
+                                                            account_type=None,
+                                                            line_number=int(line_filtered[2]),
+                                                            description=line_filtered[3],
+                                                            credit=credit,
+                                                            debit=debit,
+                                                            # interest=None,
+                                                            # advance=None,
+                                                            # reimbursement=None,
+                                                            # balance=None,
+                                                            #destination_account=line_filtered[6],
+                                                            #statement=bill,
+                                                            #ratio_code=line[5],
+                                                            )
+                        
+
+                        print('existing line: ', len(existing_lines))
+                        if len(existing_lines) >= 1:
+                            print('existing lines')
+                            for line in existing_lines:
+
+                                print(line)
+                            print('line already existing, skipped!')
+
+                            continue
+
+                        else:
+                            newline1 = objects.StatementLine.create_line(date=datetime_object,
+                                                                account_number=211100,
+                                                                account_type=None,
+                                                                line_number=line_filtered[2],
+                                                                description=line_filtered[3],
+                                                                credit=credit,
+                                                                debit=debit,
+                                                                interest=None,
+                                                                advance=None,
+                                                                reimbursement=None,
+                                                                balance=None,
+                                                                destination_account=line_filtered[6],
+                                                                statement=None,
+                                                                ratio_code=line[5],
+                                                                )
+             
+                            
+                            # newline1.statement = bill
+                            line_added += 1
+                            newline1.save()
+
+                            # bill.save()
+
+        #bill.date = min(transaction.date for transaction in bill.transactions)
+        #bill.stop_date = max(transaction.date for transaction in bill.transactions)
+        #bill.save()
+        print('Added %s new statement_line from this report on %s total lines.' %(line_added, total_line))
+
+        # return bill
+
+
+
+
+    def check_unreconciled_entries(date_from=None, date_to=None):
+        if date_from == None:
+            date_from = datetime.date(year=2019, month=1, day=1)
+        if date_to == None:
+            date_to = datetime.date(year=2030, month=1, day=1)
+
+        journal_entry_filtered = list(objects.JournalEntry.objects(date__gte=date_from, date__lte=date_to, ))
+
+        print('')
+        print('Unreconciled Entries Report')
+        print('')
+        print(date_from, date_to)
+        print('')
+
+        total_entries = 0
+        entries_found = 0
+
+        for journal_entry in journal_entry_filtered:
+            total_entries += 1
+
+            total = helpers.evaluate_journal_entry_value(journal_entry)
+            # print(total)
+            if total == 0:
+                continue
+
+            else:
+                print('')
+                print(journal_entry.statement_line)
+                print(journal_entry)
+                entries_found += 1
+                for transaction in journal_entry.transactions:
+                    print(transaction)
+
+        print('')
+        print('Found %s unreconciled entries out of %s entries evaluated.' %(entries_found, total_entries))

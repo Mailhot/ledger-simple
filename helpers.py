@@ -1,5 +1,6 @@
 import objects
 from os import listdir
+from datetime import datetime
 
 def choose_account():
     exit_bol = False
@@ -140,3 +141,72 @@ def choose_from_list(list_):
 def find_csv_filenames( path_to_dir, suffix=".csv" ):
     filenames = listdir(path_to_dir)
     return [ filename for filename in filenames if filename.endswith( suffix ) ] 
+
+def evaluate_journal_entry_value(journal_entry):
+    credit = 0
+    debit = 0
+
+    for transaction in journal_entry.transactions:
+        # print(transaction)
+        # print(transaction.credit)
+        # print(transaction.debit)
+        credit += transaction.credit
+        debit += transaction.debit
+    # print(credit, debit)
+    total = debit - credit
+    return total
+
+
+def update_purchase(self, value):
+        value = value.replace(',', '')
+        self.purchase_report = float(value)
+        print("Updated purchase = ", float(value))
+
+def update_payments(self, value):
+    value = value.replace(',', '')
+    self.payments_report = float(value)
+    print("update_payments = ", float(value))
+
+def update_new_balance(self, value):
+    value = value.replace(',', '')
+    self.new_balance_report = float(value)
+    print("update_new_balance = ", float(value))
+
+def update_previous_balance(self, value):
+    value = value.replace(',', '')
+    if self.previous_balance_report == 0:
+        self.previous_balance_report = float(value)
+
+    print("previous_balance = ", self.previous_balance_report)
+
+def update_frais_credits(self, value):
+    value = value.replace(',', '')
+    self.frais_credits_report = float(value)
+    print("update frais de credits = ", value)
+
+def update_name(self, value):
+    self.name = value
+    print("Updated name = ", self.name)
+
+def update_values(self, list_):
+
+    action = self.VALUES.get(list_[0])
+    if action:
+        action(list_[1])
+
+def parse_date(date_str):
+    MONTHS = {'avr': 'apr',
+            }
+
+    # print(datetime.datetime(2020, 5, 2).strftime('%d %b %Y'))
+
+
+    # Convert date string in the format 12 Dec 2012 in an object
+    datetime_str2 = date_str.lower()
+
+    datetime_split = datetime_str2.split(' ')
+    if datetime_split[1] in MONTHS.keys():
+        datetime_split[1] = MONTHS.get(datetime_split[1])
+        datetime_str2 = " ".join(datetime_split)
+    datetime_object = datetime.strptime(datetime_str2, '%d %b %Y')
+    return datetime_object
