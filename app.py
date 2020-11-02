@@ -175,7 +175,7 @@ if __name__ == "__main__":
     # TODO: put the split description on amount after the statement line, so we keep the statement information integral.
     # All data should be saved in files so that it does not get lost. (until database is reliable)
     # init_db(force=True) # set Force=True to reset db
-    init_db(force=True) # set Force=True to reset db
+    init_db(force=False) # set Force=True to reset db
 
     user1 = objects.User.objects[0]
     user2 = objects.User.objects[1]
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
     # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
 
-    objects.reports.account_recap(211100, datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.reports.account_recap(211100, datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
     # objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
