@@ -175,14 +175,14 @@ if __name__ == "__main__":
     # TODO: put the split description on amount after the statement line, so we keep the statement information integral.
     # All data should be saved in files so that it does not get lost. (until database is reliable)
     # init_db(force=True) # set Force=True to reset db
-    init_db(force=False) # set Force=True to reset db
+    init_db(force=True) # set Force=True to reset db
 
     user1 = objects.User.objects[0]
     user2 = objects.User.objects[1]
 
 
-    print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
-    print('initial lenght of transactions: ', len(objects.Transaction.objects()))
+    # print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
+    # print('initial lenght of transactions: ', len(objects.Transaction.objects()))
 
 
     # # Process the accounts.
@@ -197,20 +197,20 @@ if __name__ == "__main__":
     
         
     
+    
+
+    # process the credit card bills
+    txt_files = helpers.find_csv_filenames(base_folder, ".txt")
+    txt_files.sort()
+    for file in txt_files:
+        print(file)
+        statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + file)
+    # # function.StatementFunction.process_statement_lines()
+    # statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + '559828######4013_20201014.txt')
+    function.StatementFunction.process_statement_lines()
+
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
     print('final lenght of transactions: ', len(objects.Transaction.objects()))
-
-
-
-    # # process the credit card bills
-    # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
-    # txt_files.sort()
-    # for file in txt_files:
-    #     print(file)
-    #     statement1 = objects.credit_card_bill_parser(base_folder + '/' + file)
-    # function.StatementFunction.process_statement_lines()
-    statement1 = objects.credit_card_bill_parser(base_folder + '/' + '559828######4013_20200115.txt')
-    function.StatementFunction.process_statement_lines()
 
 
 
@@ -226,10 +226,10 @@ if __name__ == "__main__":
     # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
     # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
 
-    objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.account_recap(211100, datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
     # objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
