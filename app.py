@@ -102,9 +102,13 @@ def process_journal_entry(id_, force=False):
         # if journalentry.transactions[0].acount_number in 
 
 def delete_transactions(id_):
-    for journalentry in list(objects.JournalEntry.objects()):
-        if journalentry.id_ >= id_:
-            print(journalentry)
+
+    for journalentry in list(objects.JournalEntry.objects(id_=id_)):
+        print('Entry found, deleting entry would delete this entry:')
+        print(journalentry)
+        choice = input('Are you sure you want to delete this entry ? [no]/yes >> ')
+        if choice in ['y', 'yes',]:
+            # print(journalentry)
             for transaction in journalentry.transactions:
                 print(transaction)
                 delete_choice = input('Delete item? [yes] >>')
@@ -114,6 +118,8 @@ def delete_transactions(id_):
                     print('skipped')
                     pass
             journalentry.delete()
+        else: 
+            print('cancelled')
 
 def init_db(force=False):
     if force == True:
@@ -181,8 +187,8 @@ if __name__ == "__main__":
     user2 = objects.User.objects[1]
 
 
-    # print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
-    # print('initial lenght of transactions: ', len(objects.Transaction.objects()))
+    print('initial lenght of statement line: ', len(objects.StatementLine.objects()))
+    print('initial lenght of transactions: ', len(objects.Transaction.objects()))
 
 
     # # Process the accounts.
@@ -192,6 +198,9 @@ if __name__ == "__main__":
     #     print(file)
     #     imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
     #     function.StatementFunction.import_statement_lines(imported_lines)
+    # file = '2020-09-23_releve.csv'
+    # imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
+    # function.StatementFunction.import_statement_lines(imported_lines)
     # function.StatementFunction.process_statement_lines()
 
     
@@ -199,20 +208,20 @@ if __name__ == "__main__":
     
     
 
-    # process the credit card bills
-    txt_files = helpers.find_csv_filenames(base_folder, ".txt")
-    txt_files.sort()
-    for file in txt_files:
-        print(file)
-        statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + file)
-    # # function.StatementFunction.process_statement_lines()
-    # statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + '559828######4013_20201014.txt')
-    function.StatementFunction.process_statement_lines()
+    # # process the credit card bills
+    # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
+    # txt_files.sort()
+    # for file in txt_files:
+    #     print(file)
+    #     statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + file)
+    # # # function.StatementFunction.process_statement_lines()
+    # # statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + '559828######4013_20201014.txt')
+    # function.StatementFunction.process_statement_lines()
 
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
     print('final lenght of transactions: ', len(objects.Transaction.objects()))
 
-
+    # delete_transactions(1323)
 
     
     # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
@@ -227,11 +236,11 @@ if __name__ == "__main__":
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
-    # objects.reports.general_ledger(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1), 111001)
+    # objects.reports.general_ledger(datetime.date(year=2020, month=3, day=1), datetime.date(year=2020, month=12, day=1), 515005)
 
-    # objects.reports.account_recap(211100, datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
-    # objects.find_journal_entry(account_number_form=111001, account_number_to=513010)
+    # objects.find_journal_entry(account_number_form=211100, account_number_to=515005)
 
     

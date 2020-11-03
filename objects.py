@@ -917,11 +917,15 @@ class reports():
         credit = 0
         debit = 0
         for journal_entry in journal_entry_list:
-            if journal_entry.transactions[0].account_number == account_class:
-                transaction = journal_entry.transactions[0]
-                print(transaction)
-                credit += transaction.credit
-                debit += transaction.debit
+
+            for transaction in journal_entry.transactions:
+
+                if transaction.account_number == account_class:
+                    print(journal_entry)
+                    # transaction = journal_entry.transactions[0]
+                    print(transaction)
+                    credit += transaction.credit
+                    debit += transaction.debit
             # for transaction in journal_entry.transactions:
 
             #     if transaction.account_number == account_class and i == 0:
