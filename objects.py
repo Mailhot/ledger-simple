@@ -765,6 +765,7 @@ class reports():
                 if filter_account != None: 
                     if transaction.account_number != filter_account_class:
                         continue
+
                     else:
                         # filtered_transaction.append(transaction)
                         filtered_transaction += journal_entry.transactions
@@ -773,10 +774,15 @@ class reports():
 
                 print(transaction)
                 # We do not count the transaction if it is reconciled from another transaction. The transaction will be taken care of in it's own journal entry.
-                # These reconciled transaction appears at 2 places even if they are the same transaction line. We need to make sure we dont count them twice.
-                if transaction.source_ref != None:
-                    if transaction.source_ref.id_ != journal_entry.id_: # TODO: this is dodgy, it assume the journal entry has the same id as the statement line entry always
-                        continue
+                reconciled = helpers.check_reconciled_entry(transaction, journal_entry)
+
+                if reconciled == True:
+                    continue
+
+                # # These reconciled transaction appears at 2 places even if they are the same transaction line. We need to make sure we dont count them twice.
+                # if transaction.source_ref != None and journal_entry.statement_line != None:
+                #     if transaction.source_ref.id_ != journal_entry.statement_line.id_: 
+                #         continue
                 
 
 
@@ -832,9 +838,10 @@ class reports():
         # assets - liabilities = net worth
         pass
 
-    def user_balance(date_from, date_to):
+    def user_balance(date_from, date_to, recap=False):
         imbalance_journal_entry = dict()
 
+        # TODO: if we proceed directly with transaction, there will be no double values, double are cross reference of same transactions.
         journal_entry_filtered = list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
         for journal_entry in journal_entry_filtered:
             print('journal_entry = ', journal_entry)
@@ -843,22 +850,30 @@ class reports():
             user_sum = dict()
             i = 0
             for transaction in journal_entry.transactions:
-                # sort transaction in order to have the credit first and then the debit
+
                 print(transaction)
-                #     active_transactions.insert(len(active_transactions)-1, transaction)
-                # else:
-                #     active_transactions.append(transaction)
+
+                # # Check if this transaction is a reconciled from another one.
+                # reconciled = helpers.check_reconciled_entry(transaction, journal_entry)
+                # if reconciled == True:
+                #     continue
+   
+
+                # TODO: the missing user_amount should be handled else where automatically.
+                if not transaction.user_amount:
+                    print('error, no user amount found!')
+                    continue
 
                 if transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
                     # print('true')
                     for user in user_class: # 0, 2, 4, are the credit and need to be substracted
                         user_sum = helpers.init_dict_or_substract(user_sum, user.id_, transaction.user_amount[str(user.id_)])
                 
-                #elif transaction.credit != 0: # if its a credit transaction, place it before the last one, else, after.
                 else:
                     for user in user_class: # 1, 3, 5, are the debit
                         user_sum = helpers.init_dict_or_add(user_sum, user.id_, transaction.user_amount[str(user.id_)])
 
+                # print('user.id_ = ', user.id_)
                 i += 1
 
             
@@ -901,14 +916,14 @@ class reports():
         #     journal_entry1 = JournalEntry.objects.get(id_=key_)
         #     print(journal_entry1.statement_line,)
         #     print('    ', imbalance_journal_entry[key_])
-
-        # this print imbalance per user with their respective amount after it.
-        for user in list(User.objects()):
-            print(' ')
-            print('Imbalance transaction for user ', user.name)
-            for key_ in imbalance_journal_entry.keys():
-                journal_entry1 = JournalEntry.objects.get(id_=key_)
-                print(journal_entry1.id_, str(journal_entry1.statement_line.date)[:-9], journal_entry1.statement_line.account_number, journal_entry1.statement_line.description, imbalance_journal_entry[key_][user.id_])
+        if recap == True:
+            # this print imbalance per user with their respective amount after it.
+            for user in list(User.objects()):
+                print(' ')
+                print('Imbalance transaction for user ', user.name)
+                for key_ in imbalance_journal_entry.keys():
+                    journal_entry1 = JournalEntry.objects.get(id_=key_)
+                    print(journal_entry1.id_, str(journal_entry1.statement_line.date)[:-9], journal_entry1.statement_line.account_number, journal_entry1.statement_line.description, imbalance_journal_entry[key_][user.id_])
 
     def account_recap(account_number, date_from, date_to):
         journal_entry_list =  list(JournalEntry.objects(date__gte=date_from, date__lte=date_to))
@@ -917,22 +932,25 @@ class reports():
         credit = 0
         debit = 0
         for journal_entry in journal_entry_list:
+            
+            i = 0
 
-            for transaction in journal_entry.transactions:
-
-                if transaction.account_number == account_class:
-                    print(journal_entry)
-                    # transaction = journal_entry.transactions[0]
-                    print(transaction)
-                    credit += transaction.credit
-                    debit += transaction.debit
             # for transaction in journal_entry.transactions:
 
-            #     if transaction.account_number == account_class and i == 0:
+            #     if transaction.account_number == account_class:
+            #         print(journal_entry)
+            #         # transaction = journal_entry.transactions[0]
             #         print(transaction)
             #         credit += transaction.credit
             #         debit += transaction.debit
-            #         i += 1
+            for transaction in journal_entry.transactions:
+
+                if transaction.account_number == account_class and i == 0:
+                    print(journal_entry)
+                    print(transaction)
+                    credit += transaction.credit
+                    debit += transaction.debit
+                    i += 1
 
         print('credit %s debit %s' %(credit, debit))
 

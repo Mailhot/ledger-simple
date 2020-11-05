@@ -101,19 +101,54 @@ def process_journal_entry(id_, force=False):
         
         # if journalentry.transactions[0].acount_number in 
 
+def delete_statement_line(id_):
+    """
+    this function deletes the statement line and all it's children
+    """
+    statement_line = objects.StatementLine.objects.get(id_=id_)
+    journal_entry = objects.JournalEntry.objects.get(statement_line=statement_line)
+
+    print('Entry found, deleting entry would delete these:')
+    print(statement_line)
+    print(journal_entry)
+    choice = input('Are you sure you want to delete this entry ? [no]/yes >> ')
+    if choice in ['y', 'yes',]:
+
+        for transaction in journal_entry.transactions:
+            print(transaction)
+            delete_choice = input('Delete item? [yes] >>')
+            if delete_choice in ['y', '', ]:
+                transaction.delete()
+            else:
+                print('skipped')
+                pass
+        journal_entry.delete()
+        statement_line.delete()
+
+    else: 
+            print('cancelled')
+
+
+
 def delete_transactions(id_):
+    """
+    this is a function to delete a transactions and journal_entry based on a journal_entry ID
+    this is a bit useless as the system will recreate them as soon as it rethreat the statement line, 
+    sould use the delete statement_line instead.
+    """
 
     for journalentry in list(objects.JournalEntry.objects(id_=id_)):
         print('Entry found, deleting entry would delete this entry:')
         print(journalentry)
         choice = input('Are you sure you want to delete this entry ? [no]/yes >> ')
         if choice in ['y', 'yes',]:
-            # print(journalentry)
             for transaction in journalentry.transactions:
                 print(transaction)
                 delete_choice = input('Delete item? [yes] >>')
+
                 if delete_choice in ['y', '', ]:
                     transaction.delete()
+
                 else:
                     print('skipped')
                     pass
@@ -198,7 +233,8 @@ if __name__ == "__main__":
     #     print(file)
     #     imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
     #     function.StatementFunction.import_statement_lines(imported_lines)
-    # file = '2020-09-23_releve.csv'
+    
+    # file = '231305-2020-09.csv'
     # imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
     # function.StatementFunction.import_statement_lines(imported_lines)
     # function.StatementFunction.process_statement_lines()
@@ -221,7 +257,6 @@ if __name__ == "__main__":
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
     print('final lenght of transactions: ', len(objects.Transaction.objects()))
 
-    # delete_transactions(1323)
 
     
     # statement1 = objects.Statement.import_statement_from_file('./data/231305-2020-01.csv', ',', True)
@@ -232,13 +267,13 @@ if __name__ == "__main__":
 
     # objects.print_account_list()
     
-    # objects.reports.user_balance(datetime.date(year=2020, month=7, day=1), datetime.date(year=2020, month=11, day=1))
+    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=11, day=1), recap=False)
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
-    objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
+    # objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
     # objects.reports.general_ledger(datetime.date(year=2020, month=3, day=1), datetime.date(year=2020, month=12, day=1), 515005)
 
-    objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
+    # objects.reports.account_recap(111001, datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
 
     # objects.find_reconciled_error()
     # objects.find_journal_entry(account_number_form=211100, account_number_to=515005)

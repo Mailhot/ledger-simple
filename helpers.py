@@ -89,9 +89,11 @@ def init_dict_or_add(dict_, key, value):
     """
     if key in dict_.keys():
         dict_[key] += value
+
     else:
         dict_[key] = 0
         dict_[key] += value
+
     return dict_
 
 def init_dict_or_substract(dict_, key, value):
@@ -101,9 +103,11 @@ def init_dict_or_substract(dict_, key, value):
     """
     if key in dict_.keys():
         dict_[key] -= value
+
     else:
         dict_[key] = 0
         dict_[key] -= value
+        
     return dict_
 
 def choose_from_list(list_):
@@ -210,3 +214,14 @@ def parse_date(date_str):
         datetime_str2 = " ".join(datetime_split)
     datetime_object = datetime.strptime(datetime_str2, '%d %b %Y')
     return datetime_object
+
+def check_reconciled_entry(transaction, journal_entry):
+    # These reconciled transaction appears at 2 places even if they are the same transaction line. We need to make sure we dont count them twice.
+    if transaction.source_ref != None and journal_entry.statement_line != None:
+        if transaction.source_ref.id_ != journal_entry.statement_line.id_: 
+            return True
+
+        else:
+            return False
+
+    return None
