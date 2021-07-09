@@ -25,6 +25,69 @@ class StatementFunction():
 
         return split_description
 
+    def export_statement_edit(filename, complete=False):
+        ''' export all statement lines to be threated manuall in google sheet, 
+        complete define if statement lines that already have completed values should be exported
+        '''
+
+        statement_lines = list(objects.StatementLine.objects())
+        if complete == False:
+            transactions = list(objects.Transaction.objects())
+            transactions_ids = [x.source_ref for x in transactions if x.source_ref]
+            # print(transactions_ids)
+            statement_lines_out = [x for x in statement_lines if x.id not in transactions_ids]
+        else:
+            statement_line_out = satement_lines
+
+        # Export to file
+        with open(filename, 'w') as the_file:
+            file_writer = csv.writer(the_file, delimiter=',', quotechar='"', lineterminator="\n")
+
+
+            for statement_line in statement_lines_out:
+                statement_line_sum = -statement_line.credit + statement_line.debit - statement_line.interest + statement_line.advance - statement_line.reimbursement
+
+                file_writer.writerow([statement_line.id,
+                                    statement_line.account_number,
+                                    statement_line.account_type, 
+                                    statement_line.date, 
+                                    statement_line.description,
+                                    statement_line_sum,
+                                    ])
+
+    def import_statement_edit(filename):
+        ''' re-import data from previous export (export_statement_edit)
+        '''
+
+        with open(filename) as the_file:
+            file_reader = csv.reader(the_file, delimiter=',', quotechar='"')
+            line_count = 0
+            error_count = 0
+            for row in file_reader:
+                try:
+                    statement_line = objects.StatementLine.objects.get(id=row[0])
+                except ValueError:
+                    print('Error statement line does not exist for: %s' %row[0])
+                    error_count += 1
+                    continue
+
+                if row[7]:
+                    statement_line.destination_account = row[7]
+                    if row[8]:
+                        statement_line.ratio_code = str(float(row[8]) / 100)
+                    statement_line.save()
+
+                line_count += 1
+            print('Processed %s lines with %s errors' %(line_count, error_count))
+
+
+
+
+        destination_account=line_filtered[6],
+        statement=None,
+        ratio_code=line[5],
+
+
     def import_file(filename, delimiter=',', header=None):
         """This function import a file and split it into list of lines"""
         with open(filename) as the_file:
@@ -635,21 +698,38 @@ class StatementFunction():
                             continue
 
                         else:
-                            newline1 = objects.StatementLine.create_line(date=datetime_object,
-                                                                account_number=211100,
-                                                                account_type=None,
-                                                                line_number=line_filtered[2],
-                                                                description=line_filtered[3],
-                                                                credit=credit,
-                                                                debit=debit,
-                                                                interest=None,
-                                                                advance=None,
-                                                                reimbursement=None,
-                                                                balance=None,
-                                                                destination_account=line_filtered[6],
-                                                                statement=None,
-                                                                ratio_code=line[5],
-                                                                )
+                            if len(line_filtered) > 5:
+                                newline1 = objects.StatementLine.create_line(date=datetime_object,
+                                                                    account_number=211100,
+                                                                    account_type=None,
+                                                                    line_number=line_filtered[2],
+                                                                    description=line_filtered[3],
+                                                                    credit=credit,
+                                                                    debit=debit,
+                                                                    interest=None,
+                                                                    advance=None,
+                                                                    reimbursement=None,
+                                                                    balance=None,
+                                                                    destination_account=line_filtered[6],
+                                                                    statement=None,
+                                                                    ratio_code=line[5],
+                                                                    )
+                            else:
+                                newline1 = objects.StatementLine.create_line(date=datetime_object,
+                                                                    account_number=211100,
+                                                                    account_type=None,
+                                                                    line_number=line_filtered[2],
+                                                                    description=line_filtered[3],
+                                                                    credit=credit,
+                                                                    debit=debit,
+                                                                    interest=None,
+                                                                    advance=None,
+                                                                    reimbursement=None,
+                                                                    balance=None,
+                                                                    destination_account=None,
+                                                                    statement=None,
+                                                                    ratio_code=None,
+                                                                    )
              
                             
                             # newline1.statement = bill

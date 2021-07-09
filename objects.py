@@ -10,7 +10,7 @@ import unittest
 default_currency = "CAD"
 
 # Connect the DB, just need to install mongoDB, might need to create the DB?
-connect('ledger-simple-test1')
+connect('ledger-simple-test2')
 
 # Exceptions are transaction that comes with same description but could go to different account.
 # they hare going to an account that we are reconciling also.

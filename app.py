@@ -234,15 +234,6 @@ if __name__ == "__main__":
     #     imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
     #     function.StatementFunction.import_statement_lines(imported_lines)
     
-    # file = '231305-2020-09.csv'
-    # imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
-    # function.StatementFunction.import_statement_lines(imported_lines)
-    # function.StatementFunction.process_statement_lines()
-
-    
-        
-    
-    
 
     # # process the credit card bills
     # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
@@ -250,8 +241,17 @@ if __name__ == "__main__":
     # for file in txt_files:
     #     print(file)
     #     statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + file)
-    # # # function.StatementFunction.process_statement_lines()
-    # # statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + '559828######4013_20201014.txt')
+    
+
+    # # function.StatementFunction.process_statement_lines()
+    # statement1 = function.StatementFunction.credit_card_bill_parser(base_folder + '/' + '559828######4013_20201014.txt')
+    
+    # Need to threat statement in drive before processing lines (select an account and share of expenses)
+    # Output all files as a csv to be threated in google sheet (manually select accounts)
+    # then we import them back with the added values.
+    # function.StatementFunction.export_statement_edit(base_folder + '/' + 'statement_edit.csv', complete=False)
+    function.StatementFunction.import_statement_edit(base_folder + '/' + 'statement_edit.csv - input.csv')
+
     # function.StatementFunction.process_statement_lines()
 
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
@@ -267,7 +267,7 @@ if __name__ == "__main__":
 
     # objects.print_account_list()
     
-    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=11, day=1), recap=False)
+    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2021, month=11, day=1), recap=False)
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     # objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
@@ -278,4 +278,7 @@ if __name__ == "__main__":
     # objects.find_reconciled_error()
     # objects.find_journal_entry(account_number_form=211100, account_number_to=515005)
 
-    
+    # file = '231305-2020-09.csv'
+    # imported_lines = function.StatementFunction.import_file(base_folder + '/' + file, header=True)
+    # function.StatementFunction.import_statement_lines(imported_lines)
+    # function.StatementFunction.process_statement_lines()
