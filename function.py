@@ -32,10 +32,11 @@ class StatementFunction():
 
         statement_lines = list(objects.StatementLine.objects())
         if complete == False:
-            transactions = list(objects.Transaction.objects())
-            transactions_ids = [x.source_ref for x in transactions if x.source_ref]
+            
+            
             # print(transactions_ids)
-            statement_lines_out = [x for x in statement_lines if x.id not in transactions_ids]
+            statement_lines_out = [x for x in statement_lines if x.destination_account is 0]
+            print('Filtered export : %s out of %s statement_line exported' %(len(statement_lines_out), len(statement_lines)))
         else:
             statement_line_out = satement_lines
 
@@ -64,6 +65,7 @@ class StatementFunction():
             line_count = 0
             error_count = 0
             for row in file_reader:
+                print(row)
                 try:
                     statement_line = objects.StatementLine.objects.get(id=row[0])
                 except ValueError:
@@ -71,21 +73,16 @@ class StatementFunction():
                     error_count += 1
                     continue
 
-                if row[7]:
+                if row[6]:
+                    print(row[7])
                     statement_line.destination_account = row[7]
-                    if row[8]:
-                        statement_line.ratio_code = str(float(row[8]) / 100)
+                    if row[8] and row[8] is not '#N/A':
+                        statement_line.ratio_code = float(row[8]) / 100
                     statement_line.save()
 
                 line_count += 1
             print('Processed %s lines with %s errors' %(line_count, error_count))
 
-
-
-
-        destination_account=line_filtered[6],
-        statement=None,
-        ratio_code=line[5],
 
 
     def import_file(filename, delimiter=',', header=None):
@@ -451,15 +448,16 @@ class StatementFunction():
                     print('Output account has no ratio set, use parent ratio?')
                     print('Parent ratio: ', transaction1.account_number.user_ratio)
                     if statement_line.ratio_code is not None:
-                        RATIO_CODE = {'f': 1,
-                                    'j': 0,
-                                    'e': 0.5,
-                                    'tf': 1,
-                                    'tj': 0,
-                                    'c': 0.5,
-                                    'm': 0.7,
-                                    }
-                        ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
+                        # RATIO_CODE = {'f': 1,
+                        #             'j': 0,
+                        #             'e': 0.5,
+                        #             'tf': 1,
+                        #             'tj': 0,
+                        #             'c': 0.5,
+                        #             'm': 0.7,
+                        #             }
+                        # ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
+                        ratio_choice = statement_line.ratio_code
 
                     else:
                         use_parent_ratio_choice = input('(y)/n >> ')
@@ -536,19 +534,19 @@ class StatementFunction():
                     print('entry skipped already processed')
                     continue
 
-                    for line2 in line_entry:
-                        threat_line = False
-                        for transaction in line2.transactions:
-                            if len(transaction.user_amount) != len(objects.User.objects()):
-                                # delete this transaction and retreat the line
-                                threat_line = True
-                        if threat_line == True:
-                            print("DELETE LINE")
-                            for transaction in line2.transactions:
-                                transaction.delete()
-                            line2.delete()
-                            objects.JournalEntry.create_from_statement_line(line1.id_)
-                            lines_imported += 1
+                    # for line2 in line_entry:
+                    #     threat_line = False
+                    #     for transaction in line2.transactions:
+                    #         if len(transaction.user_amount) != len(objects.User.objects()):
+                    #             # delete this transaction and retreat the line
+                    #             threat_line = True
+                    #     if threat_line == True:
+                    #         print("DELETE LINE")
+                    #         for transaction in line2.transactions:
+                    #             transaction.delete()
+                    #         line2.delete()
+                    #         objects.JournalEntry.create_from_statement_line(line1.id_)
+                    #         lines_imported += 1
 
                 elif len(line_entry) > 1:
                     # TODO: print the 2 entry and chose to delete 1 of them
@@ -566,7 +564,13 @@ class StatementFunction():
                     for line2 in line_entry:
                         
                         for transaction in line2.transactions:
-                            transaction.delete()
+                            # print(type(transaction))
+                            try:
+                                transaction_class = objects.Transaction.objects.get(id=transaction.id)
+                            except objects.DoesNotExist:
+                                print('transaction does not exist skipping')
+                                continue
+                            transaction_class.delete()
                         line2.delete()
 
                 objects.JournalEntry.create_from_statement_line(line1.id_)

@@ -497,7 +497,8 @@ class StatementLine(Document): #
     statement = ReferenceField(Statement)
     destination_account = IntField(default=None)
     reconciled = BooleanField(default=False)
-    ratio_code = StringField(max_length=4, default=None)
+    # ratio_code = StringField(max_length=4, default=None)
+    ratio_code = FloatField(default=None)
     threated = BooleanField(default=False)
     #journal_entry = ReferenceField(JournalEntry, default=None)
 
@@ -1290,15 +1291,16 @@ class JournalEntry(Document):
                     print('Output account has no ratio set, use parent ratio?')
                     print('Parent ratio: ', transaction1.account_number.user_ratio)
                     if statement_line.ratio_code is not None:
-                        RATIO_CODE = {'f': 1,
-                                    'j': 0,
-                                    'e': 0.5,
-                                    'tf': 1,
-                                    'tj': 0,
-                                    'c': 0.5,
-                                    'm': 0.7,
-                                    }
-                        ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
+                        # RATIO_CODE = {'f': 1,
+                        #             'j': 0,
+                        #             'e': 0.5,
+                        #             'tf': 1,
+                        #             'tj': 0,
+                        #             'c': 0.5,
+                        #             'm': 0.7,
+                        #             }
+                        # ratio_choice = RATIO_CODE.get(statement_line.ratio_code)
+                        ratio_choice = statement_line.ratio_code
 
                     else:
                         use_parent_ratio_choice = input('(y)/n >> ')

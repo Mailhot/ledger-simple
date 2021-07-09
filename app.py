@@ -226,7 +226,7 @@ if __name__ == "__main__":
     print('initial lenght of transactions: ', len(objects.Transaction.objects()))
 
 
-    # # Process the accounts.
+    # ### Process the accounts. ###
     # csv_files = helpers.find_csv_filenames(base_folder, ".csv")
     # csv_files.sort()
     # for file in csv_files:
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     #     function.StatementFunction.import_statement_lines(imported_lines)
     
 
-    # # process the credit card bills
+    # ### process the credit card bills ###
     # txt_files = helpers.find_csv_filenames(base_folder, ".txt")
     # txt_files.sort()
     # for file in txt_files:
@@ -249,10 +249,13 @@ if __name__ == "__main__":
     # Need to threat statement in drive before processing lines (select an account and share of expenses)
     # Output all files as a csv to be threated in google sheet (manually select accounts)
     # then we import them back with the added values.
-    # function.StatementFunction.export_statement_edit(base_folder + '/' + 'statement_edit.csv', complete=False)
-    function.StatementFunction.import_statement_edit(base_folder + '/' + 'statement_edit.csv - input.csv')
 
-    # function.StatementFunction.process_statement_lines()
+    ### IMPORT EDITS###
+    # function.StatementFunction.export_statement_edit('./statement_edit.csv', complete=False)
+    # function.StatementFunction.import_statement_edit('./' + 'statement_edit.csv - input.csv')
+
+    ### PROCESS STATEMENT LINES###
+    function.StatementFunction.process_statement_lines(force=True)
 
     print('final lenght of statement line: ', len(objects.StatementLine.objects()))
     print('final lenght of transactions: ', len(objects.Transaction.objects()))
@@ -266,8 +269,10 @@ if __name__ == "__main__":
     #     print(transaction)
 
     # objects.print_account_list()
+
+    ### REPORT ####
+    objects.reports.user_balance(datetime.date(year=2021, month=6, day=1), datetime.date(year=2021, month=11, day=1), recap=False)
     
-    objects.reports.user_balance(datetime.date(year=2020, month=1, day=1), datetime.date(year=2021, month=11, day=1), recap=False)
     # delete_transactions(832)
     # objects.reports.income_statement(datetime.date(year=2020, month=1, day=1), datetime.date(year=2020, month=12, day=1))
     # objects.reports.general_ledger(datetime.date(year=2019, month=1, day=1), datetime.date(year=2020, month=12, day=31))
